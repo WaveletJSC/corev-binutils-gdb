@@ -1,6 +1,6 @@
 /* GDB routines for manipulating objfiles.
 
-   Copyright (C) 1992-2021 Free Software Foundation, Inc.
+   Copyright (C) 1992-2022 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -36,7 +36,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "gdb_obstack.h"
+#include "gdbsupport/gdb_obstack.h"
 #include "hashtab.h"
 
 #include "breakpoint.h"
@@ -331,7 +331,7 @@ objfile::objfile (bfd *abfd, const char *name, objfile_flags flags_)
 
   objfile_alloc_data (this);
 
-  gdb::unique_xmalloc_ptr<char> name_holder;
+  std::string name_holder;
   if (name == NULL)
     {
       gdb_assert (abfd == NULL);
@@ -344,7 +344,7 @@ objfile::objfile (bfd *abfd, const char *name, objfile_flags flags_)
   else
     {
       name_holder = gdb_abspath (name);
-      expanded_name = name_holder.get ();
+      expanded_name = name_holder.c_str ();
     }
   original_name = obstack_strdup (&objfile_obstack, expanded_name);
 
@@ -591,7 +591,7 @@ objfile::~objfile ()
   {
     struct symtab_and_line cursal = get_current_source_symtab_and_line ();
 
-    if (cursal.symtab && SYMTAB_OBJFILE (cursal.symtab) == this)
+    if (cursal.symtab && cursal.symtab->compunit ()->objfile () == this)
       clear_current_source_symtab_and_line ();
   }
 
@@ -616,14 +616,11 @@ relocate_one_symbol (struct symbol *sym, struct objfile *objfile,
      any symbols in STRUCT_DOMAIN or UNDEF_DOMAIN.
      But I'm leaving out that test, on the theory that
      they can't possibly pass the tests below.  */
-  if ((SYMBOL_CLASS (sym) == LOC_LABEL
-       || SYMBOL_CLASS (sym) == LOC_STATIC)
+  if ((sym->aclass () == LOC_LABEL
+       || sym->aclass () == LOC_STATIC)
       && sym->section_index () >= 0)
-    {
-      SET_SYMBOL_VALUE_ADDRESS (sym,
-				SYMBOL_VALUE_ADDRESS (sym)
-				+ delta[sym->section_index ()]);
-    }
+    sym->set_value_address (sym->value_address ()
+			    + delta[sym->section_index ()]);
 }
 
 /* Relocate OBJFILE to NEW_OFFSETS.  There should be OBJFILE->NUM_SECTIONS
@@ -651,24 +648,24 @@ objfile_relocate1 (struct objfile *objfile,
   {
     for (compunit_symtab *cust : objfile->compunits ())
       {
-	for (symtab *s : compunit_filetabs (cust))
+	for (symtab *s : cust->filetabs ())
 	  {
 	    struct linetable *l;
 
 	    /* First the line table.  */
-	    l = SYMTAB_LINETABLE (s);
+	    l = s->linetable ();
 	    if (l)
 	      {
 		for (int i = 0; i < l->nitems; ++i)
-		  l->item[i].pc += delta[COMPUNIT_BLOCK_LINE_SECTION (cust)];
+		  l->item[i].pc += delta[cust->block_line_section ()];
 	      }
 	  }
       }
 
     for (compunit_symtab *cust : objfile->compunits ())
       {
-	const struct blockvector *bv = COMPUNIT_BLOCKVECTOR (cust);
-	int block_line_section = COMPUNIT_BLOCK_LINE_SECTION (cust);
+	const struct blockvector *bv = cust->blockvector ();
+	int block_line_section = cust->block_line_section ();
 
 	if (BLOCKVECTOR_MAP (bv))
 	  addrmap_relocate (BLOCKVECTOR_MAP (bv), delta[block_line_section]);
@@ -729,7 +726,7 @@ objfile_relocate1 (struct objfile *objfile,
       int idx = s - objfile->sections;
 
       exec_set_section_address (bfd_get_filename (objfile->obfd), idx,
-				obj_section_addr (s));
+				s->addr ());
     }
 
   /* Data changed.  */
@@ -899,8 +896,8 @@ have_minimal_symbols (void)
 static bool
 sort_cmp (const struct obj_section *sect1, const obj_section *sect2)
 {
-  const CORE_ADDR sect1_addr = obj_section_addr (sect1);
-  const CORE_ADDR sect2_addr = obj_section_addr (sect2);
+  const CORE_ADDR sect1_addr = sect1->addr ();
+  const CORE_ADDR sect2_addr = sect2->addr ();
 
   if (sect1_addr < sect2_addr)
     return true;
@@ -982,7 +979,7 @@ sort_cmp (const struct obj_section *sect1, const obj_section *sect2)
 static struct obj_section *
 preferred_obj_section (struct obj_section *a, struct obj_section *b)
 {
-  gdb_assert (obj_section_addr (a) == obj_section_addr (b));
+  gdb_assert (a->addr () == b->addr ());
   gdb_assert ((a->objfile->separate_debug_objfile == b->objfile)
 	      || (b->objfile->separate_debug_objfile == a->objfile));
   gdb_assert ((a->objfile->separate_debug_objfile_backlink == b->objfile)
@@ -1030,8 +1027,8 @@ filter_debuginfo_sections (struct obj_section **map, int map_size)
       struct obj_section *const sect2 = map[i + 1];
       const struct objfile *const objfile1 = sect1->objfile;
       const struct objfile *const objfile2 = sect2->objfile;
-      const CORE_ADDR sect1_addr = obj_section_addr (sect1);
-      const CORE_ADDR sect2_addr = obj_section_addr (sect2);
+      const CORE_ADDR sect1_addr = sect1->addr ();
+      const CORE_ADDR sect2_addr = sect2->addr ();
 
       if (sect1_addr == sect2_addr
 	  && (objfile1->separate_debug_objfile == objfile2
@@ -1075,9 +1072,9 @@ filter_overlapping_sections (struct obj_section **map, int map_size)
 	{
 	  struct obj_section *const sect1 = map[i];
 	  struct obj_section *const sect2 = map[k];
-	  const CORE_ADDR sect1_addr = obj_section_addr (sect1);
-	  const CORE_ADDR sect2_addr = obj_section_addr (sect2);
-	  const CORE_ADDR sect1_endaddr = obj_section_endaddr (sect1);
+	  const CORE_ADDR sect1_addr = sect1->addr ();
+	  const CORE_ADDR sect2_addr = sect2->addr ();
+	  const CORE_ADDR sect1_endaddr = sect1->endaddr ();
 
 	  gdb_assert (sect1_addr <= sect2_addr);
 
@@ -1093,7 +1090,7 @@ filter_overlapping_sections (struct obj_section **map, int map_size)
 	      const struct bfd_section *const bfds1 = sect1->the_bfd_section;
 	      const struct bfd_section *const bfds2 = sect2->the_bfd_section;
 
-	      const CORE_ADDR sect2_endaddr = obj_section_endaddr (sect2);
+	      const CORE_ADDR sect2_endaddr = sect2->endaddr ();
 
 	      struct gdbarch *const gdbarch = objf1->arch ();
 
@@ -1184,9 +1181,9 @@ bsearch_cmp (const void *key, const void *elt)
   const CORE_ADDR pc = *(CORE_ADDR *) key;
   const struct obj_section *section = *(const struct obj_section **) elt;
 
-  if (pc < obj_section_addr (section))
+  if (pc < section->addr ())
     return -1;
-  if (pc < obj_section_endaddr (section))
+  if (pc < section->endaddr ())
     return 0;
   return 1;
 }
@@ -1289,8 +1286,7 @@ is_addr_in_objfile (CORE_ADDR addr, const struct objfile *objfile)
       if (section_is_overlay (osect) && !section_is_mapped (osect))
 	continue;
 
-      if (obj_section_addr (osect) <= addr
-	  && addr < obj_section_endaddr (osect))
+      if (osect->addr () <= addr && addr < osect->endaddr ())
 	return true;
     }
   return false;
@@ -1374,4 +1370,30 @@ objfile_flavour_name (struct objfile *objfile)
   if (objfile->obfd != NULL)
     return bfd_flavour_name (bfd_get_flavour (objfile->obfd));
   return NULL;
+}
+
+/* See objfiles.h.  */
+
+struct type *
+objfile_int_type (struct objfile *of, int size_in_bytes, bool unsigned_p)
+{
+  struct type *int_type;
+
+  /* Helper macro to examine the various builtin types.  */
+#define TRY_TYPE(F)							\
+  int_type = (unsigned_p						\
+	      ? objfile_type (of)->builtin_unsigned_ ## F		\
+	      : objfile_type (of)->builtin_ ## F);			\
+  if (int_type != NULL && TYPE_LENGTH (int_type) == size_in_bytes)	\
+    return int_type
+
+  TRY_TYPE (char);
+  TRY_TYPE (short);
+  TRY_TYPE (int);
+  TRY_TYPE (long);
+  TRY_TYPE (long_long);
+
+#undef TRY_TYPE
+
+  gdb_assert_not_reached ("unable to find suitable integer type");
 }

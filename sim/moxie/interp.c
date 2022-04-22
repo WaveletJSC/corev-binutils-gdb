@@ -1,5 +1,5 @@
 /* Simulator for the moxie processor
-   Copyright (C) 2008-2021 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
    Contributed by Anthony Green
 
 This file is part of GDB, the GNU debugger.
@@ -34,7 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "sim-base.h"
 #include "sim-options.h"
 #include "sim-io.h"
-#include "targ-vals.h"
+#include "sim-signal.h"
+#include "target-newlib-syscall.h"
 
 typedef int word;
 typedef unsigned int uword;
@@ -934,13 +935,13 @@ sim_engine_run (SIM_DESC sd,
 	        cpu.asregs.sregs[3] = inum;
 		switch (inum)
 		  {
-		  case TARGET_SYS_exit:
+		  case TARGET_NEWLIB_SYS_exit:
 		    {
 		      sim_engine_halt (sd, scpu, NULL, pc, sim_exited,
 				       cpu.asregs.regs[2]);
 		      break;
 		    }
-		  case TARGET_SYS_open:
+		  case TARGET_NEWLIB_SYS_open:
 		    {
 		      char fname[1024];
 		      int mode = (int) convert_target_flags ((unsigned) cpu.asregs.regs[3]);
@@ -953,7 +954,7 @@ sim_engine_run (SIM_DESC sd,
 		      cpu.asregs.regs[2] = fd;
 		      break;
 		    }
-		  case TARGET_SYS_read:
+		  case TARGET_NEWLIB_SYS_read:
 		    {
 		      int fd = cpu.asregs.regs[2];
 		      unsigned len = (unsigned) cpu.asregs.regs[4];
@@ -964,7 +965,7 @@ sim_engine_run (SIM_DESC sd,
 		      free (buf);
 		      break;
 		    }
-		  case TARGET_SYS_write:
+		  case TARGET_NEWLIB_SYS_write:
 		    {
 		      char *str;
 		      /* String length is at 0x12($fp) */
@@ -977,7 +978,7 @@ sim_engine_run (SIM_DESC sd,
 		      cpu.asregs.regs[2] = count;
 		      break;
 		    }
-		  case TARGET_SYS_unlink:
+		  case TARGET_NEWLIB_SYS_unlink:
 		    {
 		      char fname[1024];
 		      int fd;
@@ -1198,6 +1199,9 @@ sim_open (SIM_OPEN_KIND kind, host_callback *cb,
   SIM_DESC sd = sim_state_alloc (kind, cb);
   SIM_ASSERT (STATE_MAGIC (sd) == SIM_MAGIC_NUMBER);
 
+  /* Set default options before parsing user options.  */
+  current_target_byte_order = BFD_ENDIAN_BIG;
+
   /* The cpu data is kept in a separately allocated chunk of memory.  */
   if (sim_cpu_alloc_all (sd, 1) != SIM_RC_OK)
     {
@@ -1222,10 +1226,7 @@ sim_open (SIM_OPEN_KIND kind, host_callback *cb,
   sim_do_command(sd," memory region 0xE0000000,0x10000") ; 
 
   /* Check for/establish the a reference program image.  */
-  if (sim_analyze_program (sd,
-			   (STATE_PROG_ARGV (sd) != NULL
-			    ? *STATE_PROG_ARGV (sd)
-			    : NULL), abfd) != SIM_RC_OK)
+  if (sim_analyze_program (sd, STATE_PROG_FILE (sd), abfd) != SIM_RC_OK)
     {
       free_state (sd);
       return 0;

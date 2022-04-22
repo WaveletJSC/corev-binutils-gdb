@@ -1,6 +1,6 @@
 /* mem.c --- memory for RX simulator.
 
-Copyright (C) 2005-2021 Free Software Foundation, Inc.
+Copyright (C) 2005-2022 Free Software Foundation, Inc.
 Contributed by Red Hat, Inc.
 
 This file is part of the GNU simulators.
@@ -317,7 +317,7 @@ mem_put_byte (unsigned int address, unsigned char value)
       }
       break;
 
-#ifdef CYCLE_STATS
+#ifdef WITH_PROFILE
     case 0x0008c02b: /* PB.DR */
       {
 	if (value == 0)

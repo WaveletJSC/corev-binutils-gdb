@@ -1,5 +1,5 @@
 /* Main simulator entry points specific to the M32R.
-   Copyright (C) 1996-2021 Free Software Foundation, Inc.
+   Copyright (C) 1996-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
    This file is part of GDB, the GNU debugger.
@@ -20,15 +20,18 @@
 /* This must come before any other includes.  */
 #include "defs.h"
 
+#include <string.h>
+#include <stdlib.h>
+
+#include "sim/callback.h"
 #include "sim-main.h"
 #include "sim-options.h"
 #include "libiberty.h"
 #include "bfd.h"
 
-#include <string.h>
-#include <stdlib.h>
-
 #include "dv-m32r_uart.h"
+
+#define M32R_DEFAULT_MEM_SIZE 0x2000000 /* 32M */
 
 static void free_state (SIM_DESC);
 static void print_m32r_misc_cpu (SIM_CPU *cpu, int verbose);
@@ -44,6 +47,8 @@ free_state (SIM_DESC sd)
   sim_state_free (sd);
 }
 
+extern const SIM_MACH * const m32r_sim_machs[];
+
 /* Create an instance of the simulator.  */
 
 SIM_DESC
@@ -53,6 +58,12 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
   SIM_DESC sd = sim_state_alloc (kind, callback);
   char c;
   int i;
+
+  /* Set default options before parsing user options.  */
+  STATE_MACHS (sd) = m32r_sim_machs;
+  STATE_MODEL_NAME (sd) = "m32r/d";
+  current_alignment = STRICT_ALIGNMENT;
+  current_target_byte_order = BFD_ENDIAN_BIG;
 
   /* The cpu data is kept in a separately allocated chunk of memory.  */
   if (sim_cpu_alloc_all (sd, 1) != SIM_RC_OK)
@@ -88,11 +99,7 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
     sim_do_commandf (sd, "memory region 0,0x%x", M32R_DEFAULT_MEM_SIZE);
 
   /* check for/establish the reference program image */
-  if (sim_analyze_program (sd,
-			   (STATE_PROG_ARGV (sd) != NULL
-			    ? *STATE_PROG_ARGV (sd)
-			    : NULL),
-			   abfd) != SIM_RC_OK)
+  if (sim_analyze_program (sd, STATE_PROG_FILE (sd), abfd) != SIM_RC_OK)
     {
       free_state (sd);
       return 0;
@@ -124,10 +131,6 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
     m32r_cgen_init_dis (cd);
   }
 
-  /* Initialize various cgen things not done by common framework.
-     Must be done after m32r_cgen_cpu_open.  */
-  cgen_init (sd);
-
   for (c = 0; c < MAX_NR_PROCESSORS; ++c)
     {
       /* Only needed for profiling, but the structure member is small.  */
@@ -143,9 +146,10 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
 
 SIM_RC
 sim_create_inferior (SIM_DESC sd, struct bfd *abfd, char * const *argv,
-		     char * const *envp)
+		     char * const *env)
 {
   SIM_CPU *current_cpu = STATE_CPU (sd, 0);
+  host_callback *cb = STATE_CALLBACK (sd);
   SIM_ADDR addr;
 
   if (abfd != NULL)
@@ -154,12 +158,13 @@ sim_create_inferior (SIM_DESC sd, struct bfd *abfd, char * const *argv,
     addr = 0;
   sim_pc_set (current_cpu, addr);
 
-#ifdef M32R_LINUX
-  m32rbf_h_cr_set (current_cpu,
-                    m32r_decode_gdb_ctrl_regnum(SPI_REGNUM), 0x1f00000);
-  m32rbf_h_cr_set (current_cpu,
-                    m32r_decode_gdb_ctrl_regnum(SPU_REGNUM), 0x1f00000);
-#endif
+  if (STATE_ENVIRONMENT (sd) == USER_ENVIRONMENT)
+    {
+      m32rbf_h_cr_set (current_cpu,
+		       m32r_decode_gdb_ctrl_regnum(SPI_REGNUM), 0x1f00000);
+      m32rbf_h_cr_set (current_cpu,
+		       m32r_decode_gdb_ctrl_regnum(SPU_REGNUM), 0x1f00000);
+    }
 
   /* Standalone mode (i.e. `run`) will take care of the argv for us in
      sim_open() -> sim_parse_args().  But in debug mode (i.e. 'target sim'
@@ -170,6 +175,15 @@ sim_create_inferior (SIM_DESC sd, struct bfd *abfd, char * const *argv,
       freeargv (STATE_PROG_ARGV (sd));
       STATE_PROG_ARGV (sd) = dupargv (argv);
     }
+
+  if (STATE_PROG_ENVP (sd) != env)
+    {
+      freeargv (STATE_PROG_ENVP (sd));
+      STATE_PROG_ENVP (sd) = dupargv (env);
+    }
+
+  cb->argv = STATE_PROG_ARGV (sd);
+  cb->envp = STATE_PROG_ENVP (sd);
 
   return SIM_RC_OK;
 }

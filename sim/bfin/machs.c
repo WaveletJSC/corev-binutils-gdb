@@ -1,6 +1,6 @@
 /* Simulator for Analog Devices Blackfin processors.
 
-   Copyright (C) 2005-2021 Free Software Foundation, Inc.
+   Copyright (C) 2005-2022 Free Software Foundation, Inc.
    Contributed by Analog Devices, Inc. and Mike Frysinger.
 
    This file is part of simulators.
@@ -1962,7 +1962,7 @@ static const SIM_MACH bfin_mach =
   bfin_prepare_run
 };
 
-const SIM_MACH *sim_machs[] =
+const SIM_MACH * const bfin_sim_machs[] =
 {
   & bfin_mach,
   NULL

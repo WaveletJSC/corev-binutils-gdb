@@ -1,6 +1,6 @@
 /* TUI data manipulation routines.
 
-   Copyright (C) 1998-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -135,6 +135,13 @@ public:
   virtual bool can_scroll () const
   {
     return true;
+  }
+
+  /* Called for each mouse click inside this window.  Coordinates MOUSE_X
+     and MOUSE_Y are 0-based relative to the window, and MOUSE_BUTTON can
+     be 1 (left), 2 (middle), or 3 (right).  */
+  virtual void click (int mouse_x, int mouse_y, int mouse_button)
+  {
   }
 
   void check_and_display_highlight_if_needed ();

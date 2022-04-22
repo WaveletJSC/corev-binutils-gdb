@@ -1,6 +1,6 @@
 /* DWARF CU data structure
 
-   Copyright (C) 2021 Free Software Foundation, Inc.
+   Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -59,11 +59,11 @@ struct dwarf2_cu
      We don't need the pc/line-number mapping for type units.  */
   void setup_type_unit_groups (struct die_info *die);
 
-  /* Start a symtab for DWARF.  NAME, COMP_DIR, LOW_PC are passed to the
-     buildsym_compunit constructor.  */
-  struct compunit_symtab *start_symtab (const char *name,
-					const char *comp_dir,
-					CORE_ADDR low_pc);
+  /* Start a compunit_symtab for DWARF.  NAME, COMP_DIR, LOW_PC are passed to
+     the buildsym_compunit constructor.  */
+  struct compunit_symtab *start_compunit_symtab (const char *name,
+						 const char *comp_dir,
+						 CORE_ADDR low_pc);
 
   /* Reset the builder.  */
   void reset_builder () { m_builder.reset (); }
@@ -103,7 +103,6 @@ struct dwarf2_cu
   gdb::optional<CORE_ADDR> base_address;
 
   /* The language we are debugging.  */
-  enum language language = language_unknown;
   const struct language_defn *language_defn = nullptr;
 
   const char *producer = nullptr;
@@ -254,6 +253,7 @@ public:
   bool checked_producer : 1;
   bool producer_is_gxx_lt_4_6 : 1;
   bool producer_is_gcc_lt_4_3 : 1;
+  bool producer_is_gcc_11 : 1;
   bool producer_is_icc : 1;
   bool producer_is_icc_lt_14 : 1;
   bool producer_is_codewarrior : 1;
@@ -272,23 +272,8 @@ public:
 
   struct partial_die_info *find_partial_die (sect_offset sect_off);
 
-  /* If this CU was inherited by another CU (via specification,
-     abstract_origin, etc), this is the ancestor CU.  */
-  dwarf2_cu *ancestor;
-
   /* Get the buildsym_compunit for this CU.  */
-  buildsym_compunit *get_builder ()
-  {
-    /* If this CU has a builder associated with it, use that.  */
-    if (m_builder != nullptr)
-      return m_builder.get ();
-
-    /* Otherwise, search ancestors for a valid builder.  */
-    if (ancestor != nullptr)
-      return ancestor->get_builder ();
-
-    return nullptr;
-  }
+  buildsym_compunit *get_builder ();
 };
 
 #endif /* GDB_DWARF2_CU_H */

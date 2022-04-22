@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Free Software Foundation, Inc.
+# Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,10 +46,10 @@ class TestUnwinder(Unwinder):
         sp = pending_frame.read_register(sp_desc)
 
         block = gdb.block_for_pc(int(pc))
-        if block == None:
+        if block is None:
             return None
         func = block.function
-        if func == None:
+        if func is None:
             return None
         if str(func) != "break_bt_here":
             return None

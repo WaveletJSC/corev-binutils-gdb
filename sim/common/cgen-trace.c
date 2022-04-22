@@ -1,5 +1,5 @@
 /* Tracing support for CGEN-based simulators.
-   Copyright (C) 1996-2021 Free Software Foundation, Inc.
+   Copyright (C) 1996-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -21,11 +21,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "defs.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdlib.h>
-#include "dis-asm.h"
+
 #include "bfd.h"
+#include "diagnostics.h"
+#include "dis-asm.h"
+
 #include "sim-main.h"
 #include "sim-fpu.h"
+#include "sim/callback.h"
 
 #ifndef SIZE_INSTRUCTION
 #define SIZE_INSTRUCTION 16
@@ -184,11 +189,11 @@ cgen_trace_insn (SIM_CPU *cpu, const struct cgen_insn *opcode,
 }
 
 void
-cgen_trace_extract (SIM_CPU *cpu, IADDR pc, char *name, ...)
+cgen_trace_extract (SIM_CPU *cpu, IADDR pc, const char *name, ...)
 {
   va_list args;
   int printed_one_p = 0;
-  char *fmt;
+  const char *fmt;
 
   va_start (args, name);
 
@@ -198,7 +203,7 @@ cgen_trace_extract (SIM_CPU *cpu, IADDR pc, char *name, ...)
   do {
     int type,ival;
 
-    fmt = va_arg (args, char *);
+    fmt = va_arg (args, const char *);
 
     if (fmt)
       {
@@ -210,7 +215,10 @@ cgen_trace_extract (SIM_CPU *cpu, IADDR pc, char *name, ...)
 	  {
 	  case 'x' :
 	    ival = va_arg (args, int);
+	    DIAGNOSTIC_PUSH
+	    DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
 	    trace_printf (CPU_STATE (cpu), cpu, fmt, ival);
+	    DIAGNOSTIC_POP
 	    break;
 	  default :
 	    abort ();
@@ -223,7 +231,7 @@ cgen_trace_extract (SIM_CPU *cpu, IADDR pc, char *name, ...)
 }
 
 void
-cgen_trace_result (SIM_CPU *cpu, char *name, int type, ...)
+cgen_trace_result (SIM_CPU *cpu, const char *name, int type, ...)
 {
   va_list args;
 
@@ -269,7 +277,7 @@ cgen_trace_result (SIM_CPU *cpu, char *name, int type, ...)
    This is only for tracing semantic code.  */
 
 void
-cgen_trace_printf (SIM_CPU *cpu, char *fmt, ...)
+cgen_trace_printf (SIM_CPU *cpu, const char *fmt, ...)
 {
   va_list args;
 
@@ -301,6 +309,22 @@ cgen_trace_printf (SIM_CPU *cpu, char *fmt, ...)
 
 int
 sim_disasm_sprintf (SFILE *f, const char *format, ...)
+{
+  int n;
+  va_list args;
+
+  va_start (args, format);
+  vsprintf (f->current, format, args);
+  f->current += n = strlen (f->current);
+  va_end (args);
+  return n;
+}
+
+/* sprintf to a "stream" with styling.  */
+
+int
+sim_disasm_styled_sprintf (SFILE *f, enum disassembler_style style,
+			   const char *format, ...)
 {
   int n;
   va_list args;
@@ -362,9 +386,9 @@ sim_cgen_disassemble_insn (SIM_CPU *cpu, const CGEN_INSN *insn,
   struct disassemble_info disasm_info;
   SFILE sfile;
   union {
-    unsigned8 bytes[CGEN_MAX_INSN_SIZE];
-    unsigned16 shorts[8];
-    unsigned32 words[4];
+    uint8_t bytes[CGEN_MAX_INSN_SIZE];
+    uint16_t shorts[8];
+    uint32_t words[4];
   } insn_buf;
   SIM_DESC sd = CPU_STATE (cpu);
   CGEN_CPU_DESC cd = CPU_CPU_DESC (cpu);
@@ -375,7 +399,8 @@ sim_cgen_disassemble_insn (SIM_CPU *cpu, const CGEN_INSN *insn,
 
   sfile.buffer = sfile.current = buf;
   INIT_DISASSEMBLE_INFO (disasm_info, (FILE *) &sfile,
-			 (fprintf_ftype) sim_disasm_sprintf);
+			 (fprintf_ftype) sim_disasm_sprintf,
+			 (fprintf_styled_ftype) sim_disasm_styled_sprintf);
   disasm_info.endian =
     (bfd_big_endian (STATE_PROG_BFD (sd)) ? BFD_ENDIAN_BIG
      : bfd_little_endian (STATE_PROG_BFD (sd)) ? BFD_ENDIAN_LITTLE

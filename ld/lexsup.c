@@ -1,5 +1,5 @@
 /* Parse options for the GNU linker.
-   Copyright (C) 1991-2021 Free Software Foundation, Inc.
+   Copyright (C) 1991-2022 Free Software Foundation, Inc.
 
    This file is part of the GNU Binutils.
 
@@ -333,7 +333,8 @@ static const struct ld_option ld_options[] =
   { {"disable-multiple-abs-defs", no_argument, NULL,
      OPTION_DISABLE_MULTIPLE_DEFS_ABS},
     '\0', NULL, N_("Do not allow multiple definitions with symbols included\n"
-		   "           in filename invoked by -R or --just-symbols"),
+		   "                                in filename invoked by -R "
+		   "or --just-symbols"),
     TWO_DASHES},
   { {"embedded-relocs", no_argument, NULL, OPTION_EMBEDDED_RELOCS},
     '\0', NULL, N_("Generate embedded relocs"), TWO_DASHES},
@@ -433,6 +434,10 @@ static const struct ld_option ld_options[] =
      OPTION_REDUCE_MEMORY_OVERHEADS},
     '\0', NULL, N_("Reduce memory overheads, possibly taking much longer"),
     TWO_DASHES },
+  { {"max-cache-size=SIZE", required_argument, NULL,
+    OPTION_MAX_CACHE_SIZE},
+    '\0', NULL, N_("Set the maximum cache size to SIZE bytes"),
+    TWO_DASHES },
   { {"relax", no_argument, NULL, OPTION_RELAX},
     '\0', NULL, N_("Reduce code size by using target specific optimizations"), TWO_DASHES },
   { {"no-relax", no_argument, NULL, OPTION_NO_RELAX},
@@ -453,6 +458,8 @@ static const struct ld_option ld_options[] =
     '\0', NULL, N_("Create a position independent executable"), ONE_DASH },
   { {"pic-executable", no_argument, NULL, OPTION_PIE},
     '\0', NULL, NULL, TWO_DASHES },
+  { {"no-pie", no_argument, NULL, OPTION_NO_PIE},
+    '\0', NULL, N_("Create a position dependent executable (default)"), ONE_DASH },
   { {"sort-common", optional_argument, NULL, OPTION_SORT_COMMON},
     '\0', N_("[=ascending|descending]"),
     N_("Sort common symbols by alignment [in specified order]"),
@@ -529,6 +536,10 @@ static const struct ld_option ld_options[] =
   { {"warn-constructors", no_argument, NULL, OPTION_WARN_CONSTRUCTORS},
     '\0', NULL, N_("Warn if global constructors/destructors are seen"),
     TWO_DASHES },
+  { {"warn-execstack", no_argument, NULL, OPTION_WARN_EXECSTACK},
+    '\0', NULL, N_("Warn when creating an executable stack"), TWO_DASHES },
+  { {"no-warn-execstack", no_argument, NULL, OPTION_NO_WARN_EXECSTACK},
+    '\0', NULL, N_("Do not warn when creating an executable stack"), TWO_DASHES },
   { {"warn-multiple-gp", no_argument, NULL, OPTION_WARN_MULTIPLE_GP},
     '\0', NULL, N_("Warn if the multiple GP values are used"), TWO_DASHES },
   { {"warn-once", no_argument, NULL, OPTION_WARN_ONCE},
@@ -908,6 +919,12 @@ parse_args (unsigned argc, char **argv)
 	case OPTION_NON_CONTIGUOUS_REGIONS_WARNINGS:
 	  link_info.non_contiguous_regions_warnings = true;
 	  break;
+	case OPTION_WARN_EXECSTACK:
+	  link_info.warn_execstack = 1;
+	  break;
+	case OPTION_NO_WARN_EXECSTACK:
+	  link_info.warn_execstack = 2;
+	  break;
 	case 'e':
 	  lang_add_entry (optarg, true);
 	  break;
@@ -1261,6 +1278,9 @@ parse_args (unsigned argc, char **argv)
 	    }
 	  else
 	    einfo (_("%F%P: -shared not supported\n"));
+	  break;
+	case OPTION_NO_PIE:
+	  link_info.type = type_pde;
 	  break;
 	case OPTION_PIE:
 	  if (config.has_shared)
@@ -1624,6 +1644,17 @@ parse_args (unsigned argc, char **argv)
 	  link_info.reduce_memory_overheads = true;
 	  if (config.hash_table_size == 0)
 	    config.hash_table_size = 1021;
+	  break;
+
+	case OPTION_MAX_CACHE_SIZE:
+	  {
+	    char *end;
+	    bfd_size_type cache_size = strtoul (optarg, &end, 0);
+	    if (*end != '\0')
+	      einfo (_("%F%P: invalid cache memory size: %s\n"),
+		     optarg);
+	    link_info.max_cache_size = cache_size;
+	  }
 	  break;
 
 	case OPTION_HASH_SIZE:
@@ -2128,6 +2159,10 @@ elf_static_list_options (FILE *file)
   -z execstack                Mark executable as requiring executable stack\n"));
   fprintf (file, _("\
   -z noexecstack              Mark executable as not requiring executable stack\n"));
+  fprintf (file, _("\
+  --warn-execstack            Generate a warning if the stack is executable\n"));
+  fprintf (file, _("\
+  --no-warn-execstack         Do not generate a warning if the stack is executable\n"));
   fprintf (file, _("\
   -z unique-symbol            Avoid duplicated local symbol names\n"));
   fprintf (file, _("\

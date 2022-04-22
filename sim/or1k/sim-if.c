@@ -1,5 +1,5 @@
 /* Main simulator entry points specific to the OR1K.
-   Copyright (C) 2017-2021 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
 
    This file is part of GDB, the GNU debugger.
 
@@ -150,6 +150,8 @@ or1k_option_handler (SIM_DESC sd, sim_cpu *cpu, int opt, char *arg,
   return SIM_RC_FAIL;
 }
 
+extern const SIM_MACH * const or1k_sim_machs[];
+
 /* Create an instance of the simulator.  */
 
 SIM_DESC
@@ -159,6 +161,11 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
   SIM_DESC sd = sim_state_alloc (kind, callback);
   char c;
   int i;
+
+  /* Set default options before parsing user options.  */
+  STATE_MACHS (sd) = or1k_sim_machs;
+  STATE_MODEL_NAME (sd) = "or1200";
+  current_target_byte_order = BFD_ENDIAN_BIG;
 
   /* The cpu data is kept in a separately allocated chunk of memory.  */
   if (sim_cpu_alloc_all (sd, 1) != SIM_RC_OK)
@@ -194,10 +201,7 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
     }
 
   /* Check for/establish the reference program image.  */
-  if (sim_analyze_program (sd,
-			   (STATE_PROG_ARGV (sd) != NULL
-			    ? *STATE_PROG_ARGV (sd)
-			    : NULL), abfd) != SIM_RC_OK)
+  if (sim_analyze_program (sd, STATE_PROG_FILE (sd), abfd) != SIM_RC_OK)
     {
       free_state (sd);
       return 0;
@@ -237,10 +241,6 @@ sim_open (SIM_OPEN_KIND kind, host_callback *callback, struct bfd *abfd,
       }
     or1k_cgen_init_dis (cd);
   }
-
-  /* Initialize various cgen things not done by common framework.
-     Must be done after or1k_cgen_cpu_open.  */
-  cgen_init (sd);
 
   /* Do some final OpenRISC sim specific initializations.  */
   for (c = 0; c < MAX_NR_PROCESSORS; ++c)

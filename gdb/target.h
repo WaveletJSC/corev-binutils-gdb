@@ -1,6 +1,6 @@
 /* Interface between GDB and target environments, including files and processes
 
-   Copyright (C) 1990-2021 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.  Written by John Gilmore.
 
@@ -79,7 +79,7 @@ struct inferior;
 #include "btrace.h"
 #include "record.h"
 #include "command.h"
-#include "disasm.h"
+#include "disasm-flags.h"
 #include "tracepoint.h"
 
 #include "gdbsupport/break-common.h" /* For enum target_hw_bp_type.  */
@@ -626,8 +626,6 @@ struct target_ops
     virtual bool can_create_inferior ();
     virtual void create_inferior (const char *, const std::string &,
 				  char **, int);
-    virtual void post_startup_inferior (ptid_t)
-      TARGET_DEFAULT_IGNORE ();
     virtual int insert_fork_catchpoint (int)
       TARGET_DEFAULT_RETURN (1);
     virtual int remove_fork_catchpoint (int)
@@ -636,7 +634,7 @@ struct target_ops
       TARGET_DEFAULT_RETURN (1);
     virtual int remove_vfork_catchpoint (int)
       TARGET_DEFAULT_RETURN (1);
-    virtual void follow_fork (bool, bool)
+    virtual void follow_fork (inferior *, ptid_t, target_waitkind, bool, bool)
       TARGET_DEFAULT_FUNC (default_follow_fork);
     virtual int insert_exec_catchpoint (int)
       TARGET_DEFAULT_RETURN (1);
@@ -856,7 +854,7 @@ struct target_ops
        based on LWP and THREAD.  These values are extracted from the
        task Private_Data section of the Ada Task Control Block, and
        their interpretation depends on the target.  */
-    virtual ptid_t get_ada_task_ptid (long lwp, long thread)
+    virtual ptid_t get_ada_task_ptid (long lwp, ULONGEST thread)
       TARGET_DEFAULT_FUNC (default_get_ada_task_ptid);
 
     /* Read one auxv entry from *READPTR, not reading locations >= ENDPTR.
@@ -1153,10 +1151,10 @@ struct target_ops
     virtual bool can_use_agent ()
       TARGET_DEFAULT_RETURN (false);
 
-    /* Enable branch tracing for PTID using CONF configuration.
+    /* Enable branch tracing for TP using CONF configuration.
        Return a branch trace target information struct for reading and for
        disabling branch trace.  */
-    virtual struct btrace_target_info *enable_btrace (ptid_t ptid,
+    virtual struct btrace_target_info *enable_btrace (thread_info *tp,
 						      const struct btrace_config *conf)
       TARGET_DEFAULT_NORETURN (tcomplain ());
 
@@ -1450,6 +1448,11 @@ extern bool target_attach_no_wait ();
 
 extern void target_post_attach (int pid);
 
+/* Display a message indicating we're about to attach to a given
+   process.  */
+
+extern void target_announce_attach (int from_tty, int pid);
+
 /* Display a message indicating we're about to detach from the current
    inferior process.  */
 
@@ -1563,14 +1566,6 @@ extern void target_dumpcore (const char *filename);
    on its end.  */
 
 extern bool target_can_run_breakpoint_commands ();
-
-/* Read a string from target memory at address MEMADDR.  The string
-   will be at most LEN bytes long (note that excess bytes may be read
-   in some cases -- but these will not be returned).  Returns nullptr
-   on error.  */
-
-extern gdb::unique_xmalloc_ptr<char> target_read_string
-  (CORE_ADDR memaddr, int len, int *bytes_read = nullptr);
 
 /* For target_read_memory see target/target.h.  */
 
@@ -1688,18 +1683,6 @@ extern void target_kill (void);
 
 extern void target_load (const char *arg, int from_tty);
 
-/* Some targets (such as ttrace-based HPUX) don't allow us to request
-   notification of inferior events such as fork and vork immediately
-   after the inferior is created.  (This because of how gdb gets an
-   inferior created via invoking a shell to do it.  In such a scenario,
-   if the shell init file has commands in it, the shell will fork and
-   exec for each of those commands, and we will see each such fork
-   event.  Very bad.)
-
-   Such targets will supply an appropriate definition for this function.  */
-
-extern void target_post_startup_inferior (ptid_t ptid);
-
 /* On some targets, we can catch an inferior fork or vfork event when
    it occurs.  These functions insert/remove an already-created
    catchpoint for such events.  They return  0 for success, 1 if the
@@ -1713,13 +1696,15 @@ extern int target_insert_vfork_catchpoint (int pid);
 
 extern int target_remove_vfork_catchpoint (int pid);
 
-/* If the inferior forks or vforks, this function will be called at
-   the next resume in order to perform any bookkeeping and fiddling
-   necessary to continue debugging either the parent or child, as
-   requested, and releasing the other.  Information about the fork
-   or vfork event is available via get_last_target_status ().  */
+/* Call the follow_fork method on the current target stack.
 
-void target_follow_fork (bool follow_child, bool detach_fork);
+   This function is called when the inferior forks or vforks, to perform any
+   bookkeeping and fiddling necessary to continue debugging either the parent,
+   the child or both.  */
+
+void target_follow_fork (inferior *inf, ptid_t child_ptid,
+			 target_waitkind fork_kind, bool follow_child,
+			 bool detach_fork);
 
 /* Handle the target-specific bookkeeping required when the inferior makes an
    exec call.
@@ -1884,6 +1869,10 @@ extern bool target_async_permitted;
 /* Can the target support asynchronous execution?  */
 extern bool target_can_async_p ();
 
+/* An overload of the above that can be called when the target is not yet
+   pushed, this calls TARGET::can_async_p directly.  */
+extern bool target_can_async_p (struct target_ops *target);
+
 /* Is the target in asynchronous execution mode?  */
 extern bool target_is_async_p ();
 
@@ -1922,7 +1911,10 @@ extern std::string normal_pid_to_str (ptid_t ptid);
 extern const char *target_extra_thread_info (thread_info *tp);
 
 /* Return the thread's name, or NULL if the target is unable to determine it.
-   The returned value must not be freed by the caller.  */
+   The returned value must not be freed by the caller.
+
+   You likely don't want to call this function, but use the thread_name
+   function instead, which prefers the user-given thread name, if set.  */
 
 extern const char *target_thread_name (struct thread_info *);
 
@@ -2139,7 +2131,7 @@ extern bool target_can_execute_reverse ();
 
 extern const struct target_desc *target_read_description (struct target_ops *);
 
-extern ptid_t target_get_ada_task_ptid (long lwp, long tid);
+extern ptid_t target_get_ada_task_ptid (long lwp, ULONGEST tid);
 
 /* Main entry point for searching memory.  */
 extern int target_search_memory (CORE_ADDR start_addr,
@@ -2230,6 +2222,12 @@ extern LONGEST target_fileio_read_alloc (struct inferior *inf,
 extern gdb::unique_xmalloc_ptr<char> target_fileio_read_stralloc
     (struct inferior *inf, const char *filename);
 
+/* Invalidate the target associated with open handles that were open
+   on target TARG, since we're about to close (and maybe destroy) the
+   target.  The handles remain open from the client's perspective, but
+   trying to do anything with them other than closing them will fail
+   with EIO.  */
+extern void fileio_handles_invalidate_target (target_ops *targ);
 
 /* Tracepoint-related operations.  */
 
@@ -2496,7 +2494,7 @@ extern void update_target_permissions (void);
 
 /* See to_enable_btrace in struct target_ops.  */
 extern struct btrace_target_info *
-  target_enable_btrace (ptid_t ptid, const struct btrace_config *);
+  target_enable_btrace (thread_info *tp, const struct btrace_config *);
 
 /* See to_disable_btrace in struct target_ops.  */
 extern void target_disable_btrace (struct btrace_target_info *btinfo);

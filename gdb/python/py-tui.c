@@ -1,6 +1,6 @@
 /* TUI windows implemented in Python
 
-   Copyright (C) 2020-2021 Free Software Foundation, Inc.
+   Copyright (C) 2020-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -101,6 +101,8 @@ public:
       tui_win_info::refresh_window ();
   }
 
+  void click (int mouse_x, int mouse_y, int mouse_button) override;
+
   /* Erase and re-box the window.  */
   void erase ()
   {
@@ -153,7 +155,7 @@ gdbpy_tui_window::is_valid () const
 
 tui_py_window::~tui_py_window ()
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   /* This can be null if the user-provided Python construction
      function failed.  */
@@ -179,7 +181,7 @@ tui_py_window::rerender ()
 {
   tui_win_info::rerender ();
 
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   int h = viewport_height ();
   int w = viewport_width ();
@@ -204,7 +206,7 @@ tui_py_window::rerender ()
 void
 tui_py_window::do_scroll_horizontal (int num_to_scroll)
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   if (PyObject_HasAttrString (m_window.get (), "hscroll"))
     {
@@ -218,12 +220,27 @@ tui_py_window::do_scroll_horizontal (int num_to_scroll)
 void
 tui_py_window::do_scroll_vertical (int num_to_scroll)
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   if (PyObject_HasAttrString (m_window.get (), "vscroll"))
     {
       gdbpy_ref<> result (PyObject_CallMethod (m_window.get (), "vscroll",
 					       "i", num_to_scroll, nullptr));
+      if (result == nullptr)
+	gdbpy_print_stack ();
+    }
+}
+
+void
+tui_py_window::click (int mouse_x, int mouse_y, int mouse_button)
+{
+  gdbpy_enter enter_py;
+
+  if (PyObject_HasAttrString (m_window.get (), "click"))
+    {
+      gdbpy_ref<> result (PyObject_CallMethod (m_window.get (), "click",
+					       "iii", mouse_x, mouse_y,
+					       mouse_button));
       if (result == nullptr)
 	gdbpy_print_stack ();
     }
@@ -268,7 +285,7 @@ public:
 
   gdbpy_tui_window_maker (const gdbpy_tui_window_maker &other)
   {
-    gdbpy_enter enter_py (get_current_arch (), current_language);
+    gdbpy_enter enter_py;
     m_constr = other.m_constr;
   }
 
@@ -280,7 +297,7 @@ public:
 
   gdbpy_tui_window_maker &operator= (const gdbpy_tui_window_maker &other)
   {
-    gdbpy_enter enter_py (get_current_arch (), current_language);
+    gdbpy_enter enter_py;
     m_constr = other.m_constr;
     return *this;
   }
@@ -295,14 +312,14 @@ private:
 
 gdbpy_tui_window_maker::~gdbpy_tui_window_maker ()
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
   m_constr.reset (nullptr);
 }
 
 tui_win_info *
 gdbpy_tui_window_maker::operator() (const char *win_name)
 {
-  gdbpy_enter enter_py (get_current_arch (), current_language);
+  gdbpy_enter enter_py;
 
   gdbpy_ref<gdbpy_tui_window> wrapper
     (PyObject_New (gdbpy_tui_window, &gdbpy_tui_window_object_type));

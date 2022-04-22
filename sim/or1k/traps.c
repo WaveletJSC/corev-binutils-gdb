@@ -1,5 +1,5 @@
 /* OpenRISC exception, interrupts, syscall and trap support
-   Copyright (C) 2017-2021 Free Software Foundation, Inc.
+   Copyright (C) 2017-2022 Free Software Foundation, Inc.
 
    This file is part of GDB, the GNU debugger.
 
@@ -23,6 +23,7 @@
 #define WANT_CPU
 
 #include "sim-main.h"
+#include "sim-signal.h"
 #include "cgen-ops.h"
 
 /* Implement the sim invalid instruction function.  This will set the error
@@ -104,7 +105,7 @@ or1k32bf_fpu_error (CGEN_FPU* fpu, int status)
 	     per-instruction callbacks are not triggered which would allow
 	     us to track the PC.  This means we cannot track which
 	     instruction caused the FPU error.  */
-	  if (STATE_RUN_FAST_P (sd) == 1)
+	  if (!PROFILE_ANY_P (current_cpu) && !TRACE_ANY_P (current_cpu))
 	    sim_io_eprintf
 	      (sd, "WARNING: ignoring fpu error caught in fast mode.\n");
 	  else

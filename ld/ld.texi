@@ -1,6 +1,6 @@
 \input texinfo
 @setfilename ld.info
-@c Copyright (C) 1991-2021 Free Software Foundation, Inc.
+@c Copyright (C) 1991-2022 Free Software Foundation, Inc.
 @syncodeindex ky cp
 @c man begin INCLUDE
 @include configdoc.texi
@@ -57,7 +57,7 @@ This file documents the @sc{gnu} linker LD
 @end ifset
 version @value{VERSION}.
 
-Copyright @copyright{} 1991-2021 Free Software Foundation, Inc.
+Copyright @copyright{} 1991-2022 Free Software Foundation, Inc.
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3
@@ -94,7 +94,7 @@ section entitled ``GNU Free Documentation License''.
 
 @vskip 0pt plus 1filll
 @c man begin COPYRIGHT
-Copyright @copyright{} 1991-2021 Free Software Foundation, Inc.
+Copyright @copyright{} 1991-2022 Free Software Foundation, Inc.
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3
@@ -683,7 +683,7 @@ When creating an ELF shared object, set the internal DT_SONAME field to
 the specified name.  When an executable is linked with a shared object
 which has a DT_SONAME field, then when the executable is run the dynamic
 linker will attempt to load the shared object specified by the DT_SONAME
-field rather than the using the file name given to the linker.
+field rather than using the file name given to the linker.
 
 @kindex -i
 @cindex incremental link
@@ -1293,6 +1293,18 @@ Generate GNU_PROPERTY_X86_FEATURE_1_IBT in .note.gnu.property section
 to indicate compatibility with IBT.  This also implies @option{ibtplt}.
 Supported for Linux/i386 and Linux/x86_64.
 
+@item indirect-extern-access
+@itemx noindirect-extern-access
+Generate GNU_PROPERTY_1_NEEDED_INDIRECT_EXTERN_ACCESS in
+.note.gnu.property section to indicate that object file requires
+canonical function pointers and cannot be used with copy relocation.
+This option also implies @option{noextern-protected-data} and
+@option{nocopyreloc}.  Supported for i386 and x86-64.
+
+@option{noindirect-extern-access} removes
+GNU_PROPERTY_1_NEEDED_INDIRECT_EXTERN_ACCESS from .note.gnu.property
+section.
+
 @item initfirst
 This option is only meaningful when building a shared object.
 It marks the object so that its runtime initialization will occur
@@ -1418,6 +1430,17 @@ called.
 @item origin
 Specify that the object requires @samp{$ORIGIN} handling in paths.
 
+@item pack-relative-relocs
+@itemx nopack-relative-relocs
+Generate compact relative relocation in position-independent executable
+and shared library.  It adds @code{DT_RELR}, @code{DT_RELRSZ} and
+@code{DT_RELRENT} entries to the dynamic section.  It is ignored when
+building position-dependent executable and relocatable output.
+@option{nopack-relative-relocs} is the default, which disables compact
+relative relocation.  When linked against the GNU C Library, a
+GLIBC_ABI_DT_RELR symbol version dependency on the shared C Library is
+added to the output.  Supported for i386 and x86-64.
+
 @item relro
 @itemx norelro
 Create an ELF @code{PT_GNU_RELRO} segment header in the object.  This
@@ -1436,12 +1459,6 @@ Create separate code @code{PT_LOAD} segment header in the object.  This
 specifies a memory segment that should contain only instructions and must
 be in wholly disjoint pages from any other data.  Don't create separate
 code @code{PT_LOAD} segment if @samp{noseparate-code} is used.
-
-@item unique-symbol
-@itemx nounique-symbol
-Avoid duplicated local symbol names in the symbol string table.  Append
-".@code{number}" to duplicated local symbol names if @samp{unique-symbol}
-is used.  @option{nounique-symbol} is the default.
 
 @item shstk
 Generate GNU_PROPERTY_X86_FEATURE_1_SHSTK in .note.gnu.property section
@@ -1494,6 +1511,12 @@ report an error if @samp{notext} or @samp{textoff}.
 Do not report unresolved symbol references from regular object files,
 either when creating an executable, or when creating a shared library.
 This option is the inverse of @samp{-z defs}.
+
+@item unique-symbol
+@itemx nounique-symbol
+Avoid duplicated local symbol names in the symbol string table.  Append
+".@code{number}" to duplicated local symbol names if @samp{unique-symbol}
+is used.  @option{nounique-symbol} is the default.
 
 @item x86-64-baseline
 @item x86-64-v2
@@ -2053,7 +2076,7 @@ If this option is provided then the linker will invoke
 @var{scriptname} whenever an error is encountered.  Currently however
 only two kinds of error are supported: missing symbols and missing
 libraries.  Two arguments will be passed to script: the keyword
-``undefined-symbol'' or `missing-lib'' and the @var{name} of the 
+``undefined-symbol'' or `missing-lib'' and the @var{name} of the
 undefined symbol or missing library.  The intention is that the script
 will provide suggestions to the user as to where the symbol or library
 might be found.  After the script has finished then the normal linker
@@ -2150,6 +2173,11 @@ address the OS chooses for them (which can vary between invocations).  Like
 normal dynamically linked executables they can be executed and symbols
 defined in the executable cannot be overridden by shared libraries.
 
+@kindex -no-pie
+@item -no-pie
+@cindex position dependent executables
+Create a position dependent executable.  This is the default.
+
 @kindex -qmagic
 @item -qmagic
 This option is ignored for Linux compatibility.
@@ -2202,7 +2230,7 @@ On platforms where the feature is supported, the option
 
 On platforms where the feature is not supported, both @option{--relax}
 and @option{--no-relax} are accepted, but ignored.
- 
+
 @cindex retaining specified symbols
 @cindex stripping all but some symbols
 @cindex symbols, retaining selectively
@@ -2317,8 +2345,6 @@ For a native ELF linker, the directories in @code{DT_RUNPATH} or
 libraries needed by it. The @code{DT_RPATH} entries are ignored if
 @code{DT_RUNPATH} entries exist.
 @item
-The default directories, normally @file{/lib} and @file{/usr/lib}.
-@item
 For a linker for a Linux system, if the file @file{/etc/ld.so.conf}
 exists, the list of directories found in that file.  Note: the path
 to this file is prefixed with the @code{sysroot} value, if that is
@@ -2329,8 +2355,16 @@ For a native linker on a FreeBSD system, any directories specified by
 the @code{_PATH_ELF_HINTS} macro defined in the @file{elf-hints.h}
 header file.
 @item
-Any directories specifed by a @code{SEARCH_DIR} command in the
-linker script being used.
+Any directories specified by a @code{SEARCH_DIR} command in a
+linker script given on the command line, including scripts specified
+by @option{-T} (but not @option{-dT}).
+@item
+The default directories, normally @file{/lib} and @file{/usr/lib}.
+@item
+Any directories specified by a plugin LDPT_SET_EXTRA_LIBRARY_PATH.
+@item
+Any directories specified by a @code{SEARCH_DIR} command in a default
+linker script.
 @end enumerate
 
 Note however on Linux based systems there is an additional caveat:  If
@@ -2619,6 +2653,33 @@ Warn if any global constructors are used.  This is only useful for a few
 object file formats.  For formats like COFF or ELF, the linker can not
 detect the use of global constructors.
 
+@kindex --warn-execstack
+@cindex warnings, on exectuable stack
+@cindex executable stack, warnings on
+@item --warn-execstack
+@itemx --no-warn-execstack
+On ELF platforms this option controls how the linker generates warning
+messages when it creates an output file with an executable stack.  By
+default the linker will not warn if the @command{-z execstack} command
+line option has been used, but this behaviour can be overridden by the
+@option{--warn-execstack} option.
+
+On the other hand the linker will normally warn if the stack is made
+executable because one or more of the input files need an execuable
+stack and neither of the @command{-z execstack} or @command{-z
+noexecstack} comman line options have been specified.  This warning
+can be disabled via the @command{--no-warn-execstack} option.
+
+Note: ELF format input files specify that they need an executable
+stack by having a @var{.note.GNU-stack} section with the executable
+bit set in its section flags.  They can specify that they do not need
+an executable stack by having that section, but without the executable
+flag bit set.  If an input file does not have a @var{.note.GNU-stack}
+section present then the default behaviour is target specific.  For
+some targets, then absence of such a section implies that an
+executable stack @emph{is} required.  This is often a problem for hand
+crafted assembler files.
+
 @kindex --warn-multiple-gp
 @item --warn-multiple-gp
 Warn if multiple global pointer values are required in the output file.
@@ -2827,6 +2888,12 @@ has been used.
 
 The @option{--reduce-memory-overheads} switch may be also be used to
 enable other tradeoffs in future versions of the linker.
+
+@kindex --max-cache-size=@var{size}
+@item --max-cache-size=@var{size}
+@command{ld} normally caches the relocation information and symbol tables
+of input files in memory with the unlimited size.  This option sets the
+maximum cache size to @var{size}.
 
 @kindex --build-id
 @kindex --build-id=@var{style}
@@ -3881,7 +3948,9 @@ the value of a target-specific symbol, if it is defined;  For many
 targets this is @code{start}, but PE- and BeOS-based systems for example
 check a list of possible entry symbols, matching the first one found.
 @item
-the address of the first byte of the @samp{.text} section, if present;
+the address of the first byte of the code section, if present and an
+executable is being created - the code section is usually
+@samp{.text}, but can be something else;
 @item
 The address @code{0}.
 @end itemize
@@ -4991,13 +5060,6 @@ character may be used to specify a range of characters, as in
 quotes the following character
 @end table
 
-When a file name is matched with a wildcard, the wildcard characters
-will not match a @samp{/} character (used to separate directory names on
-Unix).  A pattern consisting of a single @samp{*} character is an
-exception; it will always match any file name, whether it contains a
-@samp{/} or not.  In a section name, the wildcard characters will match
-a @samp{/} character.
-
 File name wildcard patterns only match files which are explicitly
 specified on the command line or in an @code{INPUT} command.  The linker
 does not search directories to expand wildcards.
@@ -5445,14 +5507,26 @@ parentheses.  The following types are defined:
 @item NOLOAD
 The section should be marked as not loadable, so that it will not be
 loaded into memory when the program is run.
+@item READONLY
+The section should be marked as read-only.
 @item DSECT
-@itemx COPY
-@itemx INFO
-@itemx OVERLAY
+@item COPY
+@item INFO
+@item OVERLAY
 These type names are supported for backward compatibility, and are
 rarely used.  They all have the same effect: the section should be
 marked as not allocatable, so that no memory is allocated for the
 section when the program is run.
+@item TYPE = @var{type}
+Set the section type to the integer @var{type}. When generating an ELF
+output file, type names @code{SHT_PROGBITS}, @code{SHT_STRTAB},
+@code{SHT_NOTE}, @code{SHT_NOBITS}, @code{SHT_INIT_ARRAY},
+@code{SHT_FINI_ARRAY}, and @code{SHT_PREINIT_ARRAY} are also allowed
+for @var{type}.  It is the user's responsibility to ensure that any
+special requirements of the section type are met.
+@item READONLY ( TYPE = @var{type} )
+This form of the syntax combines the @var{READONLY} type with the
+type specified by @var{type}.
 @end table
 
 @kindex NOLOAD
@@ -6255,9 +6329,11 @@ expect when you upgrade.
 @cindex expressions
 @cindex arithmetic
 The syntax for expressions in the linker script language is identical to
-that of C expressions.  All expressions are evaluated as integers.  All
-expressions are evaluated in the same size, which is 32 bits if both the
-host and target are 32 bits, and is otherwise 64 bits.
+that of C expressions, except that whitespace is required in some
+places to resolve syntactic ambiguities.  All expressions are
+evaluated as integers.  All expressions are evaluated in the same
+size, which is 32 bits if both the host and target are 32 bits, and is
+otherwise 64 bits.
 
 You can use and set symbol values in expressions.
 
@@ -7011,7 +7087,6 @@ SECTIONS@{ @dots{}
 @end smallexample
 
 @item SIZEOF_HEADERS
-@itemx sizeof_headers
 @kindex SIZEOF_HEADERS
 @cindex header size
 Return the size in bytes of the output file's headers.  This is

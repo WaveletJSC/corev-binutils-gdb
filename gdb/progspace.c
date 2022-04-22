@@ -1,6 +1,6 @@
 /* Program and address space management, for GDB, the GNU debugger.
 
-   Copyright (C) 2009-2021 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -27,6 +27,7 @@
 #include "gdbthread.h"
 #include "inferior.h"
 #include <algorithm>
+#include "cli/cli-style.h"
 
 /* The last program space number assigned.  */
 static int last_program_space_num = 0;
@@ -215,14 +216,6 @@ program_space::remove_objfile (struct objfile *objfile)
 
 /* See progspace.h.  */
 
-next_adapter<struct so_list>
-program_space::solibs () const
-{
-  return next_adapter<struct so_list> (this->so_list);
-}
-
-/* See progspace.h.  */
-
 void
 program_space::exec_close ()
 {
@@ -329,7 +322,8 @@ print_program_space (struct ui_out *uiout, int requested)
       uiout->field_signed ("id", pspace->num);
 
       if (pspace->exec_filename != nullptr)
-	uiout->field_string ("exec", pspace->exec_filename.get ());
+	uiout->field_string ("exec", pspace->exec_filename.get (),
+			     file_name_style.style ());
       else
 	uiout->field_skip ("exec");
 
@@ -352,14 +346,14 @@ print_program_space (struct ui_out *uiout, int requested)
 	    if (!printed_header)
 	      {
 		printed_header = 1;
-		printf_filtered ("\n\tBound inferiors: ID %d (%s)",
-				 inf->num,
-				 target_pid_to_str (ptid_t (inf->pid)).c_str ());
+		gdb_printf ("\n\tBound inferiors: ID %d (%s)",
+			    inf->num,
+			    target_pid_to_str (ptid_t (inf->pid)).c_str ());
 	      }
 	    else
-	      printf_filtered (", ID %d (%s)",
-			       inf->num,
-			       target_pid_to_str (ptid_t (inf->pid)).c_str ());
+	      gdb_printf (", ID %d (%s)",
+			  inf->num,
+			  target_pid_to_str (ptid_t (inf->pid)).c_str ());
 	  }
 
       uiout->text ("\n");
@@ -412,7 +406,6 @@ void
 update_address_spaces (void)
 {
   int shared_aspace = gdbarch_has_shared_address_space (target_gdbarch ());
-  struct inferior *inf;
 
   init_address_spaces ();
 
@@ -431,7 +424,7 @@ update_address_spaces (void)
 	pspace->aspace = new_address_space ();
       }
 
-  for (inf = inferior_list; inf; inf = inf->next)
+  for (inferior *inf : all_inferiors ())
     if (gdbarch_has_global_solist (target_gdbarch ()))
       inf->aspace = maybe_new_address_space ();
     else

@@ -1,5 +1,5 @@
 /* Main simulator entry points specific to the eBPF.
-   Copyright (C) 2020-2021 Free Software Foundation, Inc.
+   Copyright (C) 2020-2022 Free Software Foundation, Inc.
 
    This file is part of GDB, the GNU debugger.
 
@@ -21,6 +21,7 @@
 
 #include <stdlib.h>
 
+#include "sim/callback.h"
 #include "sim-main.h"
 #include "sim-options.h"
 #include "libiberty.h"
@@ -111,6 +112,8 @@ bpf_free_state (SIM_DESC sd)
   sim_state_free (sd);
 }
 
+extern const SIM_MACH * const bpf_sim_machs[];
+
 /* Create an instance of the simulator.  */
 
 SIM_DESC
@@ -124,6 +127,10 @@ sim_open (SIM_OPEN_KIND kind,
      instruction will need that information, to update %fp.  */
 
   SIM_DESC sd = sim_state_alloc (kind, callback);
+
+  /* Set default options before parsing user options.  */
+  STATE_MACHS (sd) = bpf_sim_machs;
+  STATE_MODEL_NAME (sd) = "bpf-def";
 
   if (sim_cpu_alloc_all (sd, 1) != SIM_RC_OK)
     goto error;
@@ -141,10 +148,7 @@ sim_open (SIM_OPEN_KIND kind,
   if (sim_parse_args (sd, argv) != SIM_RC_OK)
     goto error;
 
-  if (sim_analyze_program (sd,
-                           (STATE_PROG_ARGV (sd) != NULL
-                            ? *STATE_PROG_ARGV (sd)
-                            : NULL), abfd) != SIM_RC_OK)
+  if (sim_analyze_program (sd, STATE_PROG_FILE (sd), abfd) != SIM_RC_OK)
     goto error;
 
   if (sim_config (sd) != SIM_RC_OK)
@@ -175,10 +179,6 @@ sim_open (SIM_OPEN_KIND kind,
     bpf_cgen_init_dis (cd);
   }
 
-  /* Initialize various cgen things not done by common framework.
-     Must be done after bpf_cgen_cpu_open.  */
-  cgen_init (sd);
-
   /* XXX do eBPF sim specific initializations.  */
 
   return sd;
@@ -191,9 +191,10 @@ sim_open (SIM_OPEN_KIND kind,
 
 SIM_RC
 sim_create_inferior (SIM_DESC sd, struct bfd *abfd,
-		     char *const *argv, char *const *envp)
+		     char *const *argv, char *const *env)
 {
   SIM_CPU *current_cpu = STATE_CPU (sd, 0);
+  host_callback *cb = STATE_CALLBACK (sd);
   SIM_ADDR addr;
 
   /* Determine the start address.
@@ -213,6 +214,15 @@ sim_create_inferior (SIM_DESC sd, struct bfd *abfd,
       freeargv (STATE_PROG_ARGV (sd));
       STATE_PROG_ARGV (sd) = dupargv (argv);
     }
+
+  if (STATE_PROG_ENVP (sd) != env)
+    {
+      freeargv (STATE_PROG_ENVP (sd));
+      STATE_PROG_ENVP (sd) = dupargv (env);
+    }
+
+  cb->argv = STATE_PROG_ARGV (sd);
+  cb->envp = STATE_PROG_ENVP (sd);
 
   return SIM_RC_OK;
 }

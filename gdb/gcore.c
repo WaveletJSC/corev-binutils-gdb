@@ -1,6 +1,6 @@
 /* Generate a core file for the inferior process.
 
-   Copyright (C) 2001-2021 Free Software Foundation, Inc.
+   Copyright (C) 2001-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -136,13 +136,12 @@ gcore_command (const char *args, int from_tty)
   else
     {
       /* Default corefile name is "core.PID".  */
-      corefilename.reset (xstrprintf ("core.%d", inferior_ptid.pid ()));
+      corefilename = xstrprintf ("core.%d", inferior_ptid.pid ());
     }
 
   if (info_verbose)
-    fprintf_filtered (gdb_stdout,
-		      "Opening corefile '%s' for output.\n",
-		      corefilename.get ());
+    gdb_printf ("Opening corefile '%s' for output.\n",
+		corefilename.get ());
 
   if (target_supports_dumpcore ())
     target_dumpcore (corefilename.get ());
@@ -161,7 +160,7 @@ gcore_command (const char *args, int from_tty)
       unlink_file.keep ();
     }
 
-  fprintf_filtered (gdb_stdout, "Saved corefile %s\n", corefilename.get ());
+  gdb_printf ("Saved corefile %s\n", corefilename.get ());
 }
 
 static enum bfd_architecture
@@ -385,8 +384,8 @@ gcore_create_callback (CORE_ADDR vaddr, unsigned long size, int read,
     {
       if (info_verbose)
 	{
-	  fprintf_filtered (gdb_stdout, "Ignore segment, %s bytes at %s\n",
-			    plongest (size), paddress (target_gdbarch (), vaddr));
+	  gdb_printf ("Ignore segment, %s bytes at %s\n",
+		      plongest (size), paddress (target_gdbarch (), vaddr));
 	}
 
       return 0;
@@ -404,8 +403,8 @@ gcore_create_callback (CORE_ADDR vaddr, unsigned long size, int read,
 	    bfd *abfd = objfile->obfd;
 	    asection *asec = objsec->the_bfd_section;
 	    bfd_vma align = (bfd_vma) 1 << bfd_section_alignment (asec);
-	    bfd_vma start = obj_section_addr (objsec) & -align;
-	    bfd_vma end = (obj_section_endaddr (objsec) + align - 1) & -align;
+	    bfd_vma start = objsec->addr () & -align;
+	    bfd_vma end = (objsec->endaddr () + align - 1) & -align;
 
 	    /* Match if either the entire memory region lies inside the
 	       section (i.e. a mapping covering some pages of a large
@@ -445,8 +444,8 @@ gcore_create_callback (CORE_ADDR vaddr, unsigned long size, int read,
 
   if (info_verbose)
     {
-      fprintf_filtered (gdb_stdout, "Save segment, %s bytes at %s\n",
-			plongest (size), paddress (target_gdbarch (), vaddr));
+      gdb_printf ("Save segment, %s bytes at %s\n",
+		  plongest (size), paddress (target_gdbarch (), vaddr));
     }
 
   bfd_set_section_size (osec, size);
@@ -479,7 +478,7 @@ objfile_find_memory_regions (struct target_ops *self,
 	    int size = bfd_section_size (isec);
 	    int ret;
 
-	    ret = (*func) (obj_section_addr (objsec), size, 
+	    ret = (*func) (objsec->addr (), size,
 			   1, /* All sections will be readable.  */
 			   (flags & SEC_READONLY) == 0, /* Writable.  */
 			   (flags & SEC_CODE) != 0, /* Executable.  */
@@ -586,11 +585,11 @@ gcore_find_signalled_thread ()
 {
   thread_info *curr_thr = inferior_thread ();
   if (curr_thr->state != THREAD_EXITED
-      && curr_thr->suspend.stop_signal != GDB_SIGNAL_0)
+      && curr_thr->stop_signal () != GDB_SIGNAL_0)
     return curr_thr;
 
   for (thread_info *thr : current_inferior ()->non_exited_threads ())
-    if (thr->suspend.stop_signal != GDB_SIGNAL_0)
+    if (thr->stop_signal () != GDB_SIGNAL_0)
       return thr;
 
   /* Default to the current thread, unless it has exited.  */

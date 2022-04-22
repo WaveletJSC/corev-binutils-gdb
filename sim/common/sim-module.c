@@ -1,6 +1,6 @@
 /* Module support.
 
-   Copyright 1996-2021 Free Software Foundation, Inc.
+   Copyright 1996-2022 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.
 
@@ -22,14 +22,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 /* This must come before any other includes.  */
 #include "defs.h"
 
+#include <stdlib.h>
+
+#include "libiberty.h"
+
 #include "sim-main.h"
 #include "sim-io.h"
 #include "sim-options.h"
 #include "sim-assert.h"
-
-#include "libiberty.h"
-
-#include <stdlib.h>
 
 /* List of all early/core modules.
    TODO: Should trim this list by converting to sim_install_* framework.  */
@@ -37,19 +37,9 @@ static MODULE_INSTALL_FN * const early_modules[] = {
   standard_install,
   sim_events_install,
   sim_model_install,
-  sim_engine_install,
-#if WITH_TRACE_ANY_P
-  trace_install,
-#endif
-#if WITH_PROFILE
-  profile_install,
-#endif
   sim_core_install,
   sim_memopt_install,
   sim_watchpoint_install,
-#if WITH_SCACHE
-  scache_install,
-#endif
 };
 static int early_modules_len = ARRAY_SIZE (early_modules);
 

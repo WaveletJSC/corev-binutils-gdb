@@ -1,6 +1,6 @@
 /* Target-dependent code for the Tilera TILE-Gx processor.
 
-   Copyright (C) 2012-2021 Free Software Foundation, Inc.
+   Copyright (C) 2012-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -308,7 +308,7 @@ tilegx_push_dummy_call (struct gdbarch *gdbarch,
 	break;
 
       /* Put argument into registers wordwise.	*/
-      val = value_contents (args[i]);
+      val = value_contents (args[i]).data ();
       for (j = 0; j < typelen; j += tilegx_reg_size)
 	{
 	  /* ISSUE: Why special handling for "typelen = 4x + 1"?
@@ -327,7 +327,7 @@ tilegx_push_dummy_call (struct gdbarch *gdbarch,
      the stack, word aligned.  */
   for (j = nargs - 1; j >= i; j--)
     {
-      const gdb_byte *contents = value_contents (args[j]);
+      const gdb_byte *contents = value_contents (args[j]).data ();
 
       typelen = TYPE_LENGTH (value_enclosing_type (args[j]));
       slacklen = align_up (typelen, 8) - typelen;
@@ -747,7 +747,7 @@ tilegx_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR start_pc)
   s = find_pc_section (start_pc);
   end_pc = start_pc + 8 * TILEGX_BUNDLE_SIZE_IN_BYTES;
   if (s != NULL)
-    end_pc = std::min (end_pc, obj_section_endaddr (s));
+    end_pc = std::min (end_pc, s->endaddr ());
 
   /* Otherwise, try to skip prologue the hard way.  */
   return tilegx_analyze_prologue (gdbarch,
@@ -905,6 +905,7 @@ tilegx_frame_base_address (struct frame_info *this_frame, void **this_cache)
 }
 
 static const struct frame_unwind tilegx_frame_unwind = {
+  "tilegx prologue",
   NORMAL_FRAME,
   default_frame_unwind_stop_reason,
   tilegx_frame_this_id,

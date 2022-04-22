@@ -27,16 +27,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#if !defined (__attribute__) && (!defined(__GNUC__) || __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 7))
-#define __attribute__(arg)
-#endif
-
-
-
+#include "ansidecl.h"
 #include "filter_filename.h"
 
 extern void error
-(char *msg, ...);
+(const char *msg, ...);
 
 #define ASSERT(EXPRESSION) \
 do { \
@@ -53,7 +48,7 @@ extern void *zalloc
 (long size);
 
 extern void dumpf
-(int indent, char *msg, ...);
+(int indent, const char *msg, ...);
 
 extern unsigned target_a2i
 (int ms_bit_nr,

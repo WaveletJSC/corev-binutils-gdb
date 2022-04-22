@@ -1,5 +1,5 @@
 /* MIPS-specific support for ELF
-   Copyright (C) 1993-2021 Free Software Foundation, Inc.
+   Copyright (C) 1993-2022 Free Software Foundation, Inc.
 
    Most of the information added by Ian Lance Taylor, Cygnus Support,
    <ian@cygnus.com>.
@@ -3075,7 +3075,7 @@ gptab_compare (const void *p1, const void *p2)
 /* Use all 64 bits of a bfd_vma for the computation of a 32-bit
    hash number.  */
 
-static INLINE hashval_t
+static inline hashval_t
 mips_elf_hash_bfd_vma (bfd_vma addr)
 {
 #ifdef BFD64
@@ -7024,7 +7024,7 @@ _bfd_elf_mips_mach (flagword flags)
 
 /* Return printable name for ABI.  */
 
-static INLINE char *
+static inline char *
 elf_mips_abi_name (bfd *abfd)
 {
   flagword flags;
@@ -7448,7 +7448,9 @@ _bfd_mips_elf_section_from_shdr (bfd *abfd,
       break;
     case SHT_MIPS_DWARF:
       if (! startswith (name, ".debug_")
-	  && ! startswith (name, ".zdebug_"))
+         && ! startswith (name, ".gnu.debuglto_.debug_")
+         && ! startswith (name, ".zdebug_")
+         && ! startswith (name, ".gnu.debuglto_.zdebug_"))
 	return false;
       break;
     case SHT_MIPS_SYMBOL_LIB:
@@ -7669,7 +7671,9 @@ _bfd_mips_elf_fake_sections (bfd *abfd, Elf_Internal_Shdr *hdr, asection *sec)
       hdr->sh_entsize = sizeof (Elf_External_ABIFlags_v0);
     }
   else if (startswith (name, ".debug_")
-	   || startswith (name, ".zdebug_"))
+	   || startswith (name, ".gnu.debuglto_.debug_")
+	   || startswith (name, ".zdebug_")
+	   || startswith (name, ".gnu.debuglto_.zdebug_"))
     {
       hdr->sh_type = SHT_MIPS_DWARF;
 
@@ -13238,7 +13242,26 @@ _bfd_elf_mips_get_relocated_section_contents
 
   reloc_vector = (arelent **) bfd_malloc (reloc_size);
   if (reloc_vector == NULL)
-    return NULL;
+    {
+      struct mips_hi16 **hip, *hi;
+    error_return:
+      /* If we are going to return an error, remove entries on
+	 mips_hi16_list that point into this section's data.  Data
+	 will typically be freed on return from this function.  */
+      hip = &mips_hi16_list;
+      while ((hi = *hip) != NULL)
+	{
+	  if (hi->input_section == input_section)
+	    {
+	      *hip = hi->next;
+	      free (hi);
+	    }
+	  else
+	    hip = &hi->next;
+	}
+      data = NULL;
+      goto out;
+    }
 
   reloc_count = bfd_canonicalize_reloc (input_bfd,
 					input_section,
@@ -13428,12 +13451,9 @@ _bfd_elf_mips_get_relocated_section_contents
 	}
     }
 
+ out:
   free (reloc_vector);
   return data;
-
- error_return:
-  free (reloc_vector);
-  return NULL;
 }
 
 static bool

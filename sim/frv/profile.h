@@ -1,5 +1,5 @@
 /* Profiling definitions for the FRV simulator
-   Copyright (C) 1998-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
    Contributed by Red Hat.
 
 This file is part of the GNU Simulators.
@@ -150,15 +150,15 @@ void load_wait_for_GRdouble (SIM_CPU *, INT);
 void load_wait_for_FRdouble (SIM_CPU *, INT);
 void enforce_full_fr_latency (SIM_CPU *, INT);
 void enforce_full_acc_latency (SIM_CPU *, INT);
-int post_wait_for_FR (SIM_CPU *, INT);
-int post_wait_for_FRdouble (SIM_CPU *, INT);
-int post_wait_for_ACC (SIM_CPU *, INT);
-int post_wait_for_CCR (SIM_CPU *, INT);
-int post_wait_for_SPR (SIM_CPU *, INT);
-int post_wait_for_fdiv (SIM_CPU *, INT);
-int post_wait_for_fsqrt (SIM_CPU *, INT);
-int post_wait_for_float (SIM_CPU *, INT);
-int post_wait_for_media (SIM_CPU *, INT);
+void post_wait_for_FR (SIM_CPU *, INT);
+void post_wait_for_FRdouble (SIM_CPU *, INT);
+void post_wait_for_ACC (SIM_CPU *, INT);
+void post_wait_for_CCR (SIM_CPU *, INT);
+void post_wait_for_SPR (SIM_CPU *, INT);
+void post_wait_for_fdiv (SIM_CPU *, INT);
+void post_wait_for_fsqrt (SIM_CPU *, INT);
+void post_wait_for_float (SIM_CPU *, INT);
+void post_wait_for_media (SIM_CPU *, INT);
 
 void trace_vliw_wait_cycles (SIM_CPU *);
 void handle_resource_wait (SIM_CPU *);

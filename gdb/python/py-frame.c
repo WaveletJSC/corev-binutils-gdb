@@ -1,6 +1,6 @@
 /* Python interface to stack frames
 
-   Copyright (C) 2008-2021 Free Software Foundation, Inc.
+   Copyright (C) 2008-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -80,7 +80,7 @@ static PyObject *
 frapy_str (PyObject *self)
 {
   const frame_id &fid = ((frame_object *) self)->frame_id;
-  return PyString_FromString (fid.to_string ().c_str ());
+  return PyUnicode_FromString (fid.to_string ().c_str ());
 }
 
 /* Implementation of gdb.Frame.is_valid (self) -> Boolean.
@@ -306,7 +306,7 @@ frapy_block (PyObject *self, PyObject *args)
   if (block)
     {
       return block_to_block_object
-	(block, symbol_objfile (BLOCK_FUNCTION (fn_block)));
+	(block, BLOCK_FUNCTION (fn_block)->objfile ());
     }
 
   Py_RETURN_NONE;
@@ -577,6 +577,27 @@ frapy_select (PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+/* The stack frame level for this frame.  */
+
+static PyObject *
+frapy_level (PyObject *self, PyObject *args)
+{
+  struct frame_info *fi;
+
+  try
+    {
+      FRAPY_REQUIRE_VALID (self, fi);
+
+      return gdb_py_object_from_longest (frame_relative_level (fi)).release ();
+    }
+  catch (const gdb_exception &except)
+    {
+      GDB_PY_HANDLE_EXCEPTION (except);
+    }
+
+  Py_RETURN_NONE;
+}
+
 /* Implementation of gdb.newest_frame () -> gdb.Frame.
    Returns the newest frame object.  */
 
@@ -748,6 +769,8 @@ Return the frame's symtab and line." },
 Return the value of the variable in this frame." },
   { "select", frapy_select, METH_NOARGS,
     "Select this frame as the user's current frame." },
+  { "level", frapy_level, METH_NOARGS,
+    "The stack level of this frame." },
   {NULL}  /* Sentinel */
 };
 

@@ -55,6 +55,10 @@
    */
 #undef HAVE_DECL_STPCPY
 
+/* Define to 1 if you have the declaration of `strnlen', and to 0 if you
+   don't. */
+#undef HAVE_DECL_STRNLEN
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
@@ -99,6 +103,9 @@
 
 /* Define to 1 if you have a working `mmap' system call. */
 #undef HAVE_MMAP
+
+/* Define to 1 if msgpack is available. */
+#undef HAVE_MSGPACK
 
 /* Define to 1 if you have the `sbrk' function. */
 #undef HAVE_SBRK

@@ -1,6 +1,6 @@
 /* Target-dependent code for Solaris SPARC.
 
-   Copyright (C) 2003-2021 Free Software Foundation, Inc.
+   Copyright (C) 2003-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -182,6 +182,7 @@ sparc32_sol2_sigtramp_frame_sniffer (const struct frame_unwind *self,
 
 static const struct frame_unwind sparc32_sol2_sigtramp_frame_unwind =
 {
+  "sparc32 solaris sigtramp",
   SIGTRAMP_FRAME,
   default_frame_unwind_stop_reason,
   sparc32_sol2_sigtramp_frame_this_id,
@@ -195,7 +196,7 @@ static const struct frame_unwind sparc32_sol2_sigtramp_frame_unwind =
 static void
 sparc32_sol2_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 {
-  struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
+  sparc_gdbarch_tdep *tdep = (sparc_gdbarch_tdep *) gdbarch_tdep (gdbarch);
 
   tdep->gregset = &sparc32_sol2_gregset;
   tdep->sizeof_gregset = 152;

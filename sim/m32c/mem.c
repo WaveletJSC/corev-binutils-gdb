@@ -1,6 +1,6 @@
 /* mem.c --- memory for M32C simulator.
 
-Copyright (C) 2005-2021 Free Software Foundation, Inc.
+Copyright (C) 2005-2022 Free Software Foundation, Inc.
 Contributed by Red Hat, Inc.
 
 This file is part of the GNU simulators.
@@ -29,9 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
-#ifdef HAVE_SYS_SELECT_H
 #include <sys/select.h>
-#endif
 #ifdef HAVE_TERMIOS_H
 #include <termios.h>
 #endif

@@ -1,6 +1,6 @@
 /* Simulator for TI MSP430 and MSP430X processors.
 
-   Copyright (C) 2012-2021 Free Software Foundation, Inc.
+   Copyright (C) 2012-2022 Free Software Foundation, Inc.
    Contributed by Red Hat, Inc.
 
    This file is part of simulators.
@@ -22,7 +22,6 @@
 #define _MSP430_MAIN_SIM_H_
 
 #include "sim-basics.h"
-#include "sim-signal.h"
 #include "msp430-sim.h"
 #include "sim-base.h"
 

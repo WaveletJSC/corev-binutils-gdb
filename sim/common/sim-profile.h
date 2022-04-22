@@ -1,5 +1,5 @@
 /* Profile header for simulators using common framework.
-   Copyright (C) 1996-2021 Free Software Foundation, Inc.
+   Copyright (C) 1996-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -101,9 +101,6 @@ SIM_RC sim_profile_set_option (SIM_DESC sd_, const char *name_, int idx_,
 #undef WITH_PROFILE_MEMORY_P
 #define WITH_PROFILE_MEMORY_P 0
 #endif
-
-/* Profiling install handler.  */
-MODULE_INSTALL_FN profile_install;
 
 /* Output format macros.  */
 #ifndef PROFILE_HISTOGRAM_WIDTH

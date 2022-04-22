@@ -1,5 +1,5 @@
 /* Inferior process information for the remote server for GDB.
-   Copyright (C) 1993-2021 Free Software Foundation, Inc.
+   Copyright (C) 1993-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -153,5 +153,9 @@ void clear_inferiors (void);
 void *thread_target_data (struct thread_info *);
 struct regcache *thread_regcache_data (struct thread_info *);
 void set_thread_regcache_data (struct thread_info *, struct regcache *);
+
+/* Set the inferior current working directory.  If CWD is empty, unset
+   the directory.  */
+void set_inferior_cwd (std::string cwd);
 
 #endif /* GDBSERVER_INFERIORS_H */

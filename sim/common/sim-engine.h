@@ -1,5 +1,5 @@
 /* Generic simulator halt/resume.
-   Copyright (C) 1997-2021 Free Software Foundation, Inc.
+   Copyright (C) 1997-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #ifndef SIM_ENGINE_H
 #define SIM_ENGINE_H
 
+#include <stdarg.h>
+
+#include "ansidecl.h"
 
 typedef struct _sim_engine sim_engine;
 struct _sim_engine
@@ -151,10 +154,6 @@ extern void sim_engine_run
 extern int sim_engine_next_cpu_nr (SIM_DESC sd);
 extern int sim_engine_last_cpu_nr (SIM_DESC sd);
 extern int sim_engine_nr_cpus (SIM_DESC sd);
-
-
-/* Establish the simulator engine */
-MODULE_INSTALL_FN sim_engine_install;
 
 
 #endif

@@ -1,5 +1,5 @@
 /* tc-i386.h -- Header file for tc-i386.c
-   Copyright (C) 1989-2021 Free Software Foundation, Inc.
+   Copyright (C) 1989-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -80,14 +80,6 @@ extern unsigned long i386_mach (void);
 #define ELF_TARGET_FORMAT32	"elf32-x86-64"
 #endif
 
-#ifndef ELF_TARGET_L1OM_FORMAT
-#define ELF_TARGET_L1OM_FORMAT	"elf64-l1om"
-#endif
-
-#ifndef ELF_TARGET_K1OM_FORMAT
-#define ELF_TARGET_K1OM_FORMAT	"elf64-k1om"
-#endif
-
 #ifndef ELF_TARGET_IAMCU_FORMAT
 #define ELF_TARGET_IAMCU_FORMAT	"elf32-iamcu"
 #endif
@@ -126,16 +118,16 @@ extern const char *i386_comment_chars;
 #define GLOBAL_OFFSET_TABLE_NAME "_GLOBAL_OFFSET_TABLE_"
 #endif
 
-#if ((defined (OBJ_ELF) || defined (OBJ_MAYBE_ELF)) \
-     && !defined (LEX_AT)) || defined (TE_PE)
 #define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) x86_cons (EXP, NBYTES)
-#endif
 extern bfd_reloc_code_real_type x86_cons (expressionS *, int);
 
 #define TC_CONS_FIX_NEW(FRAG, OFF, LEN, EXP, RELOC)	\
   x86_cons_fix_new(FRAG, OFF, LEN, EXP, RELOC)
 extern void x86_cons_fix_new
 (fragS *, unsigned int, unsigned int, expressionS *, bfd_reloc_code_real_type);
+
+#define X_PRECISION     5
+#define X_PRECISION_PAD 0
 
 #define TC_ADDRESS_BYTES x86_address_bytes
 extern int x86_address_bytes (void);
@@ -244,8 +236,6 @@ enum processor_type
   PROCESSOR_CORE,
   PROCESSOR_CORE2,
   PROCESSOR_COREI7,
-  PROCESSOR_L1OM,
-  PROCESSOR_K1OM,
   PROCESSOR_IAMCU,
   PROCESSOR_K6,
   PROCESSOR_ATHLON,
@@ -283,6 +273,7 @@ struct i386_tc_frag_data
   unsigned int mf_type : 3;
   unsigned int classified : 1;
   unsigned int branch_type : 3;
+  unsigned int code64 : 1; /* Only set by output_branch for now.  */
 };
 
 /* We need to emit the right NOP pattern in .align frags.  This is

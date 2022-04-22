@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2021 Free Software Foundation, Inc.
+# Copyright (C) 2013-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,15 +14,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import gdb
-
-# This small code snippet deals with problem of strings in Python 2.x
-# and Python 3.x.  Python 2.x has str and unicode classes which are
-# sub-classes of basestring.  In Python 3.x all strings are encoded
-# and basestring has been removed.
-try:
-    basestring
-except NameError:
-    basestring = str
 
 
 class FrameDecorator(object):
@@ -117,7 +108,7 @@ class FrameDecorator(object):
         # address.  If GDB detects an integer value from this function
         # it will attempt to find the function name from minimal
         # symbols via its own internal functions.
-        if func == None:
+        if func is None:
             pc = frame.pc()
             return pc
 
@@ -252,7 +243,7 @@ class FrameVars(object):
         # SYM may be a string instead of a symbol in the case of
         # synthetic local arguments or locals.  If that is the case,
         # always fetch.
-        if isinstance(sym, basestring):
+        if isinstance(sym, str):
             return True
 
         sym_type = sym.addr_class
@@ -270,7 +261,7 @@ class FrameVars(object):
         except RuntimeError:
             block = None
 
-        while block != None:
+        while block is not None:
             if block.is_global or block.is_static:
                 break
             for sym in block:
@@ -295,12 +286,12 @@ class FrameVars(object):
         except RuntimeError:
             block = None
 
-        while block != None:
-            if block.function != None:
+        while block is not None:
+            if block.function is not None:
                 break
             block = block.superblock
 
-        if block != None:
+        if block is not None:
             for sym in block:
                 if not sym.is_argument:
                     continue

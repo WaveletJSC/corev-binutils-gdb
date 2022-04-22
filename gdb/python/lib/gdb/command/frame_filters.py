@@ -1,5 +1,5 @@
 # Frame-filter commands.
-# Copyright (C) 2013-2021 Free Software Foundation, Inc.
+# Copyright (C) 2013-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,7 @@
 
 import sys
 import gdb
-import copy
-from gdb.FrameIterator import FrameIterator
-from gdb.FrameDecorator import FrameDecorator
 import gdb.frames
-import itertools
 
 # GDB Commands.
 class SetFilterPrefixCmd(gdb.Command):
@@ -176,7 +172,7 @@ def _complete_frame_filter_list(text, word, all_flag):
         from text/word analysis.  This list can be empty when there
         are no suggestions for completion.
     """
-    if all_flag == True:
+    if all_flag:
         filter_locations = ["all", "global", "progspace"]
     else:
         filter_locations = ["global", "progspace"]
@@ -372,7 +368,7 @@ class SetFrameFilterPriority(gdb.Command):
 
     def invoke(self, arg, from_tty):
         command_tuple = self._parse_pri_arg(arg)
-        if command_tuple != None:
+        if command_tuple is not None:
             self._set_filter_priority(command_tuple)
 
 
@@ -453,7 +449,7 @@ class ShowFrameFilterPriority(gdb.Command):
 
     def invoke(self, arg, from_tty):
         command_tuple = self._parse_pri_arg(arg)
-        if command_tuple == None:
+        if command_tuple is None:
             return
         filter_name = command_tuple[1]
         list_name = command_tuple[0]

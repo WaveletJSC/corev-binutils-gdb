@@ -1,5 +1,5 @@
 /* Line completion stuff for GDB, the GNU debugger.
-   Copyright (C) 2000-2021 Free Software Foundation, Inc.
+   Copyright (C) 2000-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -36,7 +36,7 @@
    calling a hook instead so we eliminate the CLI dependency.  */
 #include "gdbcmd.h"
 
-/* Needed for rl_completer_word_break_characters() and for
+/* Needed for rl_completer_word_break_characters and for
    rl_filename_completion_function.  */
 #include "readline/readline.h"
 
@@ -250,14 +250,6 @@ filename_completer_handle_brkchars (struct cmd_list_element *ignore,
     (gdb_completer_file_name_break_characters);
 }
 
-/* Possible values for the found_quote flags word used by the completion
-   functions.  It says what kind of (shell-like) quoting we found anywhere
-   in the line. */
-#define RL_QF_SINGLE_QUOTE      0x01
-#define RL_QF_DOUBLE_QUOTE      0x02
-#define RL_QF_BACKSLASH         0x04
-#define RL_QF_OTHER_QUOTE       0x08
-
 /* Find the bounds of the current word for completion purposes, and
    return a pointer to the end of the word.  This mimics (and is a
    modified version of) readline's _rl_find_completion_word internal
@@ -284,7 +276,7 @@ gdb_rl_find_completion_word (struct gdb_rl_completion_word_info *info,
 			     int *qc, int *dp,
 			     const char *line_buffer)
 {
-  int scan, end, found_quote, delimiter, pass_next, isbrk;
+  int scan, end, delimiter, pass_next, isbrk;
   char quote_char;
   const char *brkchars;
   int point = strlen (line_buffer);
@@ -301,7 +293,7 @@ gdb_rl_find_completion_word (struct gdb_rl_completion_word_info *info,
     }
 
   end = point;
-  found_quote = delimiter = 0;
+  delimiter = 0;
   quote_char = '\0';
 
   brkchars = info->word_break_characters;
@@ -311,8 +303,6 @@ gdb_rl_find_completion_word (struct gdb_rl_completion_word_info *info,
       /* We have a list of characters which can be used in pairs to
 	 quote substrings for the completer.  Try to find the start of
 	 an unclosed quoted substring.  */
-      /* FOUND_QUOTE is set so we know what kind of quotes we
-	 found.  */
       for (scan = pass_next = 0;
 	   scan < end;
 	   scan++)
@@ -330,7 +320,6 @@ gdb_rl_find_completion_word (struct gdb_rl_completion_word_info *info,
 	  if (quote_char != '\'' && line_buffer[scan] == '\\')
 	    {
 	      pass_next = 1;
-	      found_quote |= RL_QF_BACKSLASH;
 	      continue;
 	    }
 
@@ -351,13 +340,6 @@ gdb_rl_find_completion_word (struct gdb_rl_completion_word_info *info,
 	      /* Found start of a quoted substring.  */
 	      quote_char = line_buffer[scan];
 	      point = scan + 1;
-	      /* Shell-like quoting conventions.  */
-	      if (quote_char == '\'')
-		found_quote |= RL_QF_SINGLE_QUOTE;
-	      else if (quote_char == '"')
-		found_quote |= RL_QF_DOUBLE_QUOTE;
-	      else
-		found_quote |= RL_QF_OTHER_QUOTE;
 	    }
 	}
     }
@@ -1073,107 +1055,31 @@ location_completer_handle_brkchars (struct cmd_list_element *ignore,
   location_completer (ignore, tracker, text, NULL);
 }
 
-/* Helper for expression_completer which recursively adds field and
-   method names from TYPE, a struct or union type, to the OUTPUT
-   list.  */
-
-static void
-add_struct_fields (struct type *type, completion_list &output,
-		   const char *fieldname, int namelen)
-{
-  int i;
-  int computed_type_name = 0;
-  const char *type_name = NULL;
-
-  type = check_typedef (type);
-  for (i = 0; i < type->num_fields (); ++i)
-    {
-      if (i < TYPE_N_BASECLASSES (type))
-	add_struct_fields (TYPE_BASECLASS (type, i),
-			   output, fieldname, namelen);
-      else if (TYPE_FIELD_NAME (type, i))
-	{
-	  if (TYPE_FIELD_NAME (type, i)[0] != '\0')
-	    {
-	      if (! strncmp (TYPE_FIELD_NAME (type, i), 
-			     fieldname, namelen))
-		output.emplace_back (xstrdup (TYPE_FIELD_NAME (type, i)));
-	    }
-	  else if (type->field (i).type ()->code () == TYPE_CODE_UNION)
-	    {
-	      /* Recurse into anonymous unions.  */
-	      add_struct_fields (type->field (i).type (),
-				 output, fieldname, namelen);
-	    }
-	}
-    }
-
-  for (i = TYPE_NFN_FIELDS (type) - 1; i >= 0; --i)
-    {
-      const char *name = TYPE_FN_FIELDLIST_NAME (type, i);
-
-      if (name && ! strncmp (name, fieldname, namelen))
-	{
-	  if (!computed_type_name)
-	    {
-	      type_name = type->name ();
-	      computed_type_name = 1;
-	    }
-	  /* Omit constructors from the completion list.  */
-	  if (!type_name || strcmp (type_name, name))
-	    output.emplace_back (xstrdup (name));
-	}
-    }
-}
-
 /* See completer.h.  */
 
 void
 complete_expression (completion_tracker &tracker,
 		     const char *text, const char *word)
 {
-  struct type *type = NULL;
-  gdb::unique_xmalloc_ptr<char> fieldname;
-  enum type_code code = TYPE_CODE_UNDEF;
+  expression_up exp;
+  std::unique_ptr<expr_completion_base> expr_completer;
 
   /* Perform a tentative parse of the expression, to see whether a
      field completion is required.  */
   try
     {
-      type = parse_expression_for_completion (text, &fieldname, &code);
+      exp = parse_expression_for_completion (text, &expr_completer);
     }
   catch (const gdb_exception_error &except)
     {
       return;
     }
 
-  if (fieldname != nullptr && type)
-    {
-      for (;;)
-	{
-	  type = check_typedef (type);
-	  if (type->code () != TYPE_CODE_PTR && !TYPE_IS_REFERENCE (type))
-	    break;
-	  type = TYPE_TARGET_TYPE (type);
-	}
-
-      if (type->code () == TYPE_CODE_UNION
-	  || type->code () == TYPE_CODE_STRUCT)
-	{
-	  completion_list result;
-
-	  add_struct_fields (type, result, fieldname.get (),
-			     strlen (fieldname.get ()));
-	  tracker.add_completions (std::move (result));
-	  return;
-	}
-    }
-  else if (fieldname != nullptr && code != TYPE_CODE_UNDEF)
-    {
-      collect_symbol_completion_matches_type (tracker, fieldname.get (),
-					      fieldname.get (), code);
-      return;
-    }
+  /* Part of the parse_expression_for_completion contract.  */
+  gdb_assert ((exp == nullptr) == (expr_completer == nullptr));
+  if (expr_completer != nullptr
+      && expr_completer->complete (exp.get (), tracker))
+    return;
 
   complete_files_symbols (tracker, text, word);
 }
@@ -1913,13 +1819,9 @@ reg_or_group_completer_1 (completion_tracker &tracker,
 
   if ((targets & complete_reggroup_names) != 0)
     {
-      struct reggroup *group;
-
-      for (group = reggroup_next (gdbarch, NULL);
-	   group != NULL;
-	   group = reggroup_next (gdbarch, group))
+      for (const struct reggroup *group : gdbarch_reggroups (gdbarch))
 	{
-	  name = reggroup_name (group);
+	  name = group->name ();
 	  if (strncmp (word, name, len) == 0)
 	    tracker.add_completion (make_unique_xstrdup (name));
 	}
@@ -2029,7 +1931,7 @@ gdb_completion_word_break_characters_throw ()
       rl_basic_quote_characters = NULL;
     }
 
-  return rl_completer_word_break_characters;
+  return (char *) rl_completer_word_break_characters;
 }
 
 char *

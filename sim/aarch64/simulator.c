@@ -1,6 +1,6 @@
 /* simulator.c -- Interface for the AArch64 simulator.
 
-   Copyright (C) 2015-2021 Free Software Foundation, Inc.
+   Copyright (C) 2015-2022 Free Software Foundation, Inc.
 
    Contributed by Red Hat.
 
@@ -33,6 +33,8 @@
 #include "simulator.h"
 #include "cpustate.h"
 #include "memory.h"
+
+#include "sim-signal.h"
 
 #define NO_SP 0
 #define SP_OK 1

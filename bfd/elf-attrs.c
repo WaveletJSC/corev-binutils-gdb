@@ -1,5 +1,5 @@
 /* ELF attributes support (based on ARM EABI attributes).
-   Copyright (C) 2005-2021 Free Software Foundation, Inc.
+   Copyright (C) 2005-2022 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -548,15 +548,15 @@ _bfd_elf_parse_attributes (bfd *abfd, Elf_Internal_Shdr * hdr)
 		}
 	      else
 		{
-		  subsection_len = 0;
 		  p = p_end;
+		  break;
 		}
-	      if (subsection_len == 0)
-		break;
 	      if (subsection_len > section_len)
 		subsection_len = section_len;
 	      section_len -= subsection_len;
 	      end = orig_p + subsection_len;
+	      if (end < p)
+		break;
 	      switch (tag)
 		{
 		case Tag_File:

@@ -1,6 +1,6 @@
 /* Public partial symbol table definitions.
 
-   Copyright (C) 2009-2021 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,7 +20,7 @@
 #ifndef PSYMTAB_H
 #define PSYMTAB_H
 
-#include "gdb_obstack.h"
+#include "gdbsupport/gdb_obstack.h"
 #include "symfile.h"
 #include "gdbsupport/next-iterator.h"
 #include "bcache.h"
@@ -104,7 +104,7 @@ public:
 
   void install_psymtab (partial_symtab *pst);
 
-  typedef next_adapter<struct partial_symtab> partial_symtab_range;
+  using partial_symtab_range = next_range<partial_symtab>;
 
   /* A range adapter that makes it possible to iterate over all
      psymtabs in one objfile.  */

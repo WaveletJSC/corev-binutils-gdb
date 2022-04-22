@@ -1,7 +1,7 @@
 /* Test-driver for the remote-virtual-component simulator framework
    for GDB, the GNU Debugger.
 
-   Copyright 2006-2021 Free Software Foundation, Inc.
+   Copyright 2006-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -48,16 +48,13 @@ main (int argc, char *argv[])
 
 #include <sys/time.h>
 
-#ifdef HAVE_SYS_SELECT_H
-#include <sys/select.h>
-#endif
-
 #include <errno.h>
 
 /* Not guarded in dv-sockser.c, so why here.  */
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 
 enum rv_command {

@@ -1,6 +1,6 @@
 /* Definitions for BFD wrappers used by GDB.
 
-   Copyright (C) 2011-2021 Free Software Foundation, Inc.
+   Copyright (C) 2011-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -32,6 +32,7 @@
 #include "target.h"
 #include "gdb/fileio.h"
 #include "inferior.h"
+#include "cli/cli-style.h"
 
 /* An object of this type is stored in the section's user data when
    mapping a section.  */
@@ -131,7 +132,7 @@ static void
 show_bfd_sharing  (struct ui_file *file, int from_tty,
 		   struct cmd_list_element *c, const char *value)
 {
-  fprintf_filtered (file, _("BFD sharing is %s.\n"), value);
+  gdb_printf (file, _("BFD sharing is %s.\n"), value);
 }
 
 /* When true debugging of the bfd caches is enabled.  */
@@ -147,7 +148,7 @@ static void
 show_bfd_cache_debug (struct ui_file *file, int from_tty,
 		      struct cmd_list_element *c, const char *value)
 {
-  fprintf_filtered (file, _("BFD cache debugging is %s.\n"), value);
+  gdb_printf (file, _("BFD cache debugging is %s.\n"), value);
 }
 
 /* The type of an object being looked up in gdb_bfd_cache.  We use
@@ -423,6 +424,15 @@ gdb_bfd_iovec_fileio_pread (struct bfd *abfd, void *stream, void *buf,
   return pos;
 }
 
+/* Warn that it wasn't possible to close a bfd for file NAME, because
+   of REASON.  */
+
+static void
+gdb_bfd_close_warning (const char *name, const char *reason)
+{
+  warning (_("cannot close \"%s\": %s"), name, reason);
+}
+
 /* Wrapper for target_fileio_close suitable for passing as the
    CLOSE_FUNC argument to gdb_bfd_openr_iovec.  */
 
@@ -436,7 +446,16 @@ gdb_bfd_iovec_fileio_close (struct bfd *abfd, void *stream)
 
   /* Ignore errors on close.  These may happen with remote
      targets if the connection has already been torn down.  */
-  target_fileio_close (fd, &target_errno);
+  try
+    {
+      target_fileio_close (fd, &target_errno);
+    }
+  catch (const gdb_exception &ex)
+    {
+      /* Also avoid crossing exceptions over bfd.  */
+      gdb_bfd_close_warning (bfd_get_filename (abfd),
+			     ex.message->c_str ());
+    }
 
   /* Zero means success.  */
   return 0;
@@ -523,7 +542,7 @@ gdb_bfd_open (const char *name, const char *target, int fd,
 
   if (fd == -1)
     {
-      fd = gdb_open_cloexec (name, O_RDONLY | O_BINARY, 0);
+      fd = gdb_open_cloexec (name, O_RDONLY | O_BINARY, 0).release ();
       if (fd == -1)
 	{
 	  bfd_set_error (bfd_error_system_call);
@@ -626,8 +645,8 @@ gdb_bfd_close_or_warn (struct bfd *abfd)
   ret = bfd_close (abfd);
 
   if (!ret)
-    warning (_("cannot close \"%s\": %s"),
-	     name, bfd_errmsg (bfd_get_error ()));
+    gdb_bfd_close_warning (name,
+			   bfd_errmsg (bfd_get_error ()));
 
   return ret;
 }
@@ -1041,6 +1060,36 @@ gdb_bfd_get_full_section_contents (bfd *abfd, asection *section,
 				   section_size);
 }
 
+#define AMBIGUOUS_MESS1	".\nMatching formats:"
+#define AMBIGUOUS_MESS2	\
+  ".\nUse \"set gnutarget format-name\" to specify the format."
+
+/* See gdb_bfd.h.  */
+
+std::string
+gdb_bfd_errmsg (bfd_error_type error_tag, char **matching)
+{
+  char **p;
+
+  /* Check if errmsg just need simple return.  */
+  if (error_tag != bfd_error_file_ambiguously_recognized || matching == NULL)
+    return bfd_errmsg (error_tag);
+
+  std::string ret (bfd_errmsg (error_tag));
+  ret += AMBIGUOUS_MESS1;
+
+  for (p = matching; *p; p++)
+    {
+      ret += " ";
+      ret += *p;
+    }
+  ret += AMBIGUOUS_MESS2;
+
+  xfree (matching);
+
+  return ret;
+}
+
 /* A callback for htab_traverse that prints a single BFD.  */
 
 static int
@@ -1053,7 +1102,8 @@ print_one_bfd (void **slot, void *data)
   ui_out_emit_tuple tuple_emitter (uiout, NULL);
   uiout->field_signed ("refcount", gdata->refc);
   uiout->field_string ("addr", host_address_to_string (abfd));
-  uiout->field_string ("filename", bfd_get_filename (abfd));
+  uiout->field_string ("filename", bfd_get_filename (abfd),
+		       file_name_style.style ());
   uiout->text ("\n");
 
   return 1;

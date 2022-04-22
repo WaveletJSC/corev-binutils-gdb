@@ -9,6 +9,7 @@
 
 #include "bfd.h"
 #include "sim-assert.h"
+#include "sim-signal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -93,6 +94,9 @@ sim_open (SIM_OPEN_KIND kind,
   SIM_DESC sd = sim_state_alloc (kind, cb);
 
   SIM_ASSERT (STATE_MAGIC (sd) == SIM_MAGIC_NUMBER);
+
+  /* Set default options before parsing user options.  */
+  current_target_byte_order = BFD_ENDIAN_LITTLE;
 
   /* The cpu data is kept in a separately allocated chunk of memory.  */
   if (sim_cpu_alloc_all (sd, 1) != SIM_RC_OK)
@@ -264,11 +268,7 @@ sim_open (SIM_OPEN_KIND kind,
   
 
   /* check for/establish the a reference program image */
-  if (sim_analyze_program (sd,
-			   (STATE_PROG_ARGV (sd) != NULL
-			    ? *STATE_PROG_ARGV (sd)
-			    : NULL),
-			   abfd) != SIM_RC_OK)
+  if (sim_analyze_program (sd, STATE_PROG_FILE (sd), abfd) != SIM_RC_OK)
     {
       sim_module_uninstall (sd);
       return 0;
@@ -320,7 +320,7 @@ sim_create_inferior (SIM_DESC sd,
   } else {
     PC = 0;
   }
-  CPU_PC_SET (STATE_CPU (sd, 0), (unsigned64) PC);
+  CPU_PC_SET (STATE_CPU (sd, 0), (uint64_t) PC);
 
   if (STATE_ARCHITECTURE (sd)->mach == bfd_mach_am33_2)
     PSW |= PSW_FE;
@@ -335,7 +335,7 @@ static int
 mn10300_reg_fetch (SIM_CPU *cpu, int rn, unsigned char *memory, int length)
 {
   reg_t reg = State.regs[rn];
-  uint8 *a = memory;
+  uint8_t *a = memory;
   a[0] = reg;
   a[1] = reg >> 8;
   a[2] = reg >> 16;
@@ -346,7 +346,7 @@ mn10300_reg_fetch (SIM_CPU *cpu, int rn, unsigned char *memory, int length)
 static int
 mn10300_reg_store (SIM_CPU *cpu, int rn, unsigned char *memory, int length)
 {
-  uint8 *a = memory;
+  uint8_t *a = memory;
   State.regs[rn] = (a[3] << 24) + (a[2] << 16) + (a[1] << 8) + a[0];
   return length;
 }

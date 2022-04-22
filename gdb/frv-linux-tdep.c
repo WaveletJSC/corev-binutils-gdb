@@ -1,7 +1,7 @@
 /* Target-dependent code for GNU/Linux running on the Fujitsu FR-V,
    for GDB.
 
-   Copyright (C) 2004-2021 Free Software Foundation, Inc.
+   Copyright (C) 2004-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -334,6 +334,7 @@ frv_linux_sigtramp_frame_sniffer (const struct frame_unwind *self,
 
 static const struct frame_unwind frv_linux_sigtramp_frame_unwind =
 {
+  "frv linux sigtramp",
   SIGTRAMP_FRAME,
   default_frame_unwind_stop_reason,
   frv_linux_sigtramp_frame_this_id,

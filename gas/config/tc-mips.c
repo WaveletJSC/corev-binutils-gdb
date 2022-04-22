@@ -1,5 +1,5 @@
 /* tc-mips.c -- assemble code for a MIPS chip.
-   Copyright (C) 1993-2021 Free Software Foundation, Inc.
+   Copyright (C) 1993-2022 Free Software Foundation, Inc.
    Contributed by the OSF and Ralph Campbell.
    Written by Keith Knowles and Ralph Campbell, working independently.
    Modified for ECOFF and R4000 support by Ian Lance Taylor of Cygnus
@@ -16371,32 +16371,28 @@ void
 s_change_section (int ignore ATTRIBUTE_UNUSED)
 {
   char *saved_ilp;
-  char *section_name;
-  char c, endc;
-  char next_c = 0;
+  const char *section_name;
+  char c, next_c = 0;
   int section_type;
   int section_flag;
   int section_entry_size;
   int section_alignment;
 
   saved_ilp = input_line_pointer;
-  endc = get_symbol_name (&section_name);
-  c = (endc == '"' ? input_line_pointer[1] : endc);
+  section_name = obj_elf_section_name ();
+  if (section_name == NULL)
+    return;
+  c = input_line_pointer[0];
   if (c)
-    next_c = input_line_pointer [(endc == '"' ? 2 : 1)];
+    next_c = input_line_pointer[1];
 
   /* Do we have .section Name<,"flags">?  */
   if (c != ',' || (c == ',' && next_c == '"'))
     {
-      /* Just after name is now '\0'.  */
-      (void) restore_line_pointer (endc);
       input_line_pointer = saved_ilp;
       obj_elf_section (ignore);
       return;
     }
-
-  section_name = xstrdup (section_name);
-  c = restore_line_pointer (endc);
 
   input_line_pointer++;
 
@@ -16442,9 +16438,6 @@ s_change_section (int ignore ATTRIBUTE_UNUSED)
 
   obj_elf_change_section (section_name, section_type, section_flag,
 			  section_entry_size, 0, 0, 0);
-
-  if (now_seg->name != section_name)
-    free (section_name);
 }
 
 void
@@ -19730,7 +19723,7 @@ s_mips_file (int x ATTRIBUTE_UNUSED)
   if (ECOFF_DEBUGGING)
     {
       get_number ();
-      s_app_file (0);
+      s_file (0);
     }
   else
     {
@@ -19744,8 +19737,8 @@ s_mips_file (int x ATTRIBUTE_UNUSED)
          after 3.1 in order to support DWARF-2 on MIPS.  */
       if (filename != NULL && ! first_file_directive)
 	{
-	  (void) new_logical_line (filename, -1);
-	  s_app_file_string (filename, 0);
+	  new_logical_line (filename, -1);
+	  s_file_string (filename);
 	}
       first_file_directive = 1;
     }

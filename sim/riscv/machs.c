@@ -1,6 +1,6 @@
 /* RISC-V simulator.
 
-   Copyright (C) 2005-2021 Free Software Foundation, Inc.
+   Copyright (C) 2005-2022 Free Software Foundation, Inc.
    Contributed by Mike Frysinger.
 
    This file is part of simulators.
@@ -111,7 +111,7 @@ static const SIM_MACH rv128i_mach =
 #endif
 
 /* Order matters here.  */
-const SIM_MACH *sim_machs[] =
+const SIM_MACH * const riscv_sim_machs[] =
 {
 #if WITH_TARGET_WORD_BITSIZE >= 128
   &rv128i_mach,

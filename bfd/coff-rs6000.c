@@ -1,5 +1,5 @@
 /* BFD back-end for IBM RS/6000 "XCOFF" files.
-   Copyright (C) 1990-2021 Free Software Foundation, Inc.
+   Copyright (C) 1990-2022 Free Software Foundation, Inc.
    Written by Metin G. Ozisik, Mimi Phuong-Thao Vo, and John Gilmore.
    Archive support from Damon A. Permezel.
    Contributed by IBM Corporation and Cygnus Support.
@@ -386,7 +386,7 @@ _bfd_xcoff_copy_private_bfd_data (bfd *ibfd, bfd *obfd)
   else
     {
       sec = coff_section_from_bfd_index (ibfd, ix->sntoc);
-      if (sec == NULL)
+      if (sec == NULL || sec->output_section == NULL)
 	ox->sntoc = 0;
       else
 	ox->sntoc = sec->output_section->target_index;
@@ -396,7 +396,7 @@ _bfd_xcoff_copy_private_bfd_data (bfd *ibfd, bfd *obfd)
   else
     {
       sec = coff_section_from_bfd_index (ibfd, ix->snentry);
-      if (sec == NULL)
+      if (sec == NULL || sec->output_section == NULL)
 	ox->snentry = 0;
       else
 	ox->snentry = sec->output_section->target_index;
@@ -489,12 +489,13 @@ _bfd_xcoff_swap_aux_in (bfd *abfd, void * ext1, int type ATTRIBUTE_UNUSED,
     case C_FILE:
       if (ext->x_file.x_n.x_fname[0] == 0)
 	{
-	  in->x_file.x_n.x_zeroes = 0;
-	  in->x_file.x_n.x_offset =
+	  in->x_file.x_n.x_n.x_zeroes = 0;
+	  in->x_file.x_n.x_n.x_offset =
 	    H_GET_32 (abfd, ext->x_file.x_n.x_n.x_offset);
 	}
       else
-	memcpy (in->x_file.x_fname, ext->x_file.x_n.x_fname, FILNMLEN);
+	memcpy (in->x_file.x_n.x_fname, ext->x_file.x_n.x_fname, FILNMLEN);
+      in->x_file.x_ftype = H_GET_8 (abfd, ext->x_file.x_ftype);
       break;
 
       /* RS/6000 "csect" auxents.
@@ -573,14 +574,15 @@ _bfd_xcoff_swap_aux_out (bfd *abfd, void * inp, int type ATTRIBUTE_UNUSED,
       break;
 
     case C_FILE:
-      if (in->x_file.x_fname[0] == 0)
+      if (in->x_file.x_n.x_fname[0] == 0)
 	{
 	  H_PUT_32 (abfd, 0, ext->x_file.x_n.x_n.x_zeroes);
-	  H_PUT_32 (abfd, in->x_file.x_n.x_offset,
+	  H_PUT_32 (abfd, in->x_file.x_n.x_n.x_offset,
 		    ext->x_file.x_n.x_n.x_offset);
 	}
       else
-	memcpy (ext->x_file.x_n.x_fname, in->x_file.x_fname, FILNMLEN);
+	memcpy (ext->x_file.x_n.x_fname, in->x_file.x_n.x_fname, FILNMLEN);
+      H_PUT_8 (abfd, in->x_file.x_ftype, ext->x_file.x_ftype);
       break;
 
       /* RS/6000 "csect" auxents */
@@ -1104,7 +1106,7 @@ reloc_howto_type xcoff_howto_table[] =
 	 0,			/* bitpos */
 	 complain_overflow_bitfield, /* complain_on_overflow */
 	 0,			/* special_function */
-	 "R_TLSM",		/* name */
+	 "R_TLSML",		/* name */
 	 true,			/* partial_inplace */
 	 0xffffffff,		/* src_mask */
 	 0xffffffff,		/* dst_mask */
@@ -1669,6 +1671,10 @@ _bfd_xcoff_read_ar_hdr (bfd *abfd)
       ret->filename = (char *) hdrp + SIZEOF_AR_HDR_BIG;
     }
 
+  /* Size occupied by the header above that covered in the fixed
+     SIZEOF_AR_HDR or SIZEOF_AR_HDR_BIG.  */
+  ret->extra_size = namlen + (namlen & 1) + SXCOFFARFMAG;
+
   /* Skip over the XCOFFARFMAG at the end of the file name.  */
   if (bfd_seek (abfd, (file_ptr) ((namlen & 1) + SXCOFFARFMAG), SEEK_CUR) != 0)
     return NULL;
@@ -1682,6 +1688,7 @@ bfd *
 _bfd_xcoff_openr_next_archived_file (bfd *archive, bfd *last_file)
 {
   file_ptr filestart;
+  file_ptr laststart, lastend;
 
   if (xcoff_ardata (archive) == NULL)
     {
@@ -1692,9 +1699,27 @@ _bfd_xcoff_openr_next_archived_file (bfd *archive, bfd *last_file)
   if (! xcoff_big_format_p (archive))
     {
       if (last_file == NULL)
-	filestart = bfd_ardata (archive)->first_file_filepos;
+	{
+	  filestart = bfd_ardata (archive)->first_file_filepos;
+	  laststart = 0;
+	  lastend = SIZEOF_AR_FILE_HDR;
+	}
       else
-	GET_VALUE_IN_FIELD (filestart, arch_xhdr (last_file)->nextoff, 10);
+	{
+	  struct areltdata *arel = arch_eltdata (last_file);
+
+	  GET_VALUE_IN_FIELD (filestart, arch_xhdr (last_file)->nextoff, 10);
+	  laststart = last_file->proxy_origin;
+	  lastend = laststart + arel->parsed_size;
+	  laststart -= SIZEOF_AR_HDR + arel->extra_size;
+	}
+
+      /* Sanity check that we aren't pointing into the previous element.  */
+      if (filestart != 0 && filestart >= laststart && filestart < lastend)
+	{
+	  bfd_set_error (bfd_error_malformed_archive);
+	  return NULL;
+	}
 
       if (filestart == 0
 	  || EQ_VALUE_IN_FIELD (filestart, xcoff_ardata (archive)->memoff, 10)
@@ -1707,9 +1732,27 @@ _bfd_xcoff_openr_next_archived_file (bfd *archive, bfd *last_file)
   else
     {
       if (last_file == NULL)
-	filestart = bfd_ardata (archive)->first_file_filepos;
+	{
+	  filestart = bfd_ardata (archive)->first_file_filepos;
+	  laststart = 0;
+	  lastend = SIZEOF_AR_FILE_HDR_BIG;
+	}
       else
-	GET_VALUE_IN_FIELD (filestart, arch_xhdr_big (last_file)->nextoff, 10);
+	{
+	  struct areltdata *arel = arch_eltdata (last_file);
+
+	  GET_VALUE_IN_FIELD (filestart, arch_xhdr_big (last_file)->nextoff, 10);
+	  laststart = last_file->proxy_origin;
+	  lastend = laststart + arel->parsed_size;
+	  laststart -= SIZEOF_AR_HDR_BIG + arel->extra_size;
+	}
+
+      /* Sanity check that we aren't pointing into the previous element.  */
+      if (filestart != 0 && filestart >= laststart && filestart < lastend)
+	{
+	  bfd_set_error (bfd_error_malformed_archive);
+	  return NULL;
+	}
 
       if (filestart == 0
 	  || EQ_VALUE_IN_FIELD (filestart, xcoff_ardata_big (archive)->memoff, 10)
@@ -1720,7 +1763,7 @@ _bfd_xcoff_openr_next_archived_file (bfd *archive, bfd *last_file)
 	}
     }
 
-  return _bfd_get_elt_at_filepos (archive, filestart);
+  return _bfd_get_elt_at_filepos (archive, filestart, NULL);
 }
 
 /* Stat an element in an XCOFF archive.  */
@@ -2894,7 +2937,8 @@ xcoff_reloc_type_noop (bfd *input_bfd ATTRIBUTE_UNUSED,
 		       bfd_vma val ATTRIBUTE_UNUSED,
 		       bfd_vma addend ATTRIBUTE_UNUSED,
 		       bfd_vma *relocation ATTRIBUTE_UNUSED,
-		       bfd_byte *contents ATTRIBUTE_UNUSED)
+		       bfd_byte *contents ATTRIBUTE_UNUSED,
+		       struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   return true;
 }
@@ -2909,7 +2953,8 @@ xcoff_reloc_type_fail (bfd *input_bfd,
 		       bfd_vma val ATTRIBUTE_UNUSED,
 		       bfd_vma addend ATTRIBUTE_UNUSED,
 		       bfd_vma *relocation ATTRIBUTE_UNUSED,
-		       bfd_byte *contents ATTRIBUTE_UNUSED)
+		       bfd_byte *contents ATTRIBUTE_UNUSED,
+		       struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   _bfd_error_handler
     /* xgettext: c-format */
@@ -2929,7 +2974,8 @@ xcoff_reloc_type_pos (bfd *input_bfd ATTRIBUTE_UNUSED,
 		      bfd_vma val,
 		      bfd_vma addend,
 		      bfd_vma *relocation,
-		      bfd_byte *contents ATTRIBUTE_UNUSED)
+		      bfd_byte *contents ATTRIBUTE_UNUSED,
+		      struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   *relocation = val + addend;
   return true;
@@ -2945,7 +2991,8 @@ xcoff_reloc_type_neg (bfd *input_bfd ATTRIBUTE_UNUSED,
 		      bfd_vma val,
 		      bfd_vma addend,
 		      bfd_vma *relocation,
-		      bfd_byte *contents ATTRIBUTE_UNUSED)
+		      bfd_byte *contents ATTRIBUTE_UNUSED,
+		      struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   *relocation = - val - addend;
   return true;
@@ -2961,7 +3008,8 @@ xcoff_reloc_type_rel (bfd *input_bfd ATTRIBUTE_UNUSED,
 		      bfd_vma val,
 		      bfd_vma addend,
 		      bfd_vma *relocation,
-		      bfd_byte *contents ATTRIBUTE_UNUSED)
+		      bfd_byte *contents ATTRIBUTE_UNUSED,
+		      struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   howto->pc_relative = true;
 
@@ -2984,7 +3032,8 @@ xcoff_reloc_type_toc (bfd *input_bfd,
 		      bfd_vma val,
 		      bfd_vma addend ATTRIBUTE_UNUSED,
 		      bfd_vma *relocation,
-		      bfd_byte *contents ATTRIBUTE_UNUSED)
+		      bfd_byte *contents ATTRIBUTE_UNUSED,
+		      struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   struct xcoff_link_hash_entry *h;
 
@@ -3033,7 +3082,8 @@ xcoff_reloc_type_ba (bfd *input_bfd ATTRIBUTE_UNUSED,
 		     bfd_vma val,
 		     bfd_vma addend,
 		     bfd_vma *relocation,
-		     bfd_byte *contents ATTRIBUTE_UNUSED)
+		     bfd_byte *contents ATTRIBUTE_UNUSED,
+		     struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   howto->src_mask &= ~3;
   howto->dst_mask = howto->src_mask;
@@ -3053,10 +3103,13 @@ xcoff_reloc_type_br (bfd *input_bfd,
 		     bfd_vma val,
 		     bfd_vma addend,
 		     bfd_vma *relocation,
-		     bfd_byte *contents)
+		     bfd_byte *contents,
+		     struct bfd_link_info *info)
 {
   struct xcoff_link_hash_entry *h;
   bfd_vma section_offset;
+  struct xcoff_stub_hash_entry *stub_entry = NULL;
+  enum xcoff_stub_type stub_type;
 
   if (0 > rel->r_symndx)
     return false;
@@ -3110,6 +3163,27 @@ xcoff_reloc_type_br (bfd *input_bfd,
       howto->complain_on_overflow = complain_overflow_dont;
     }
 
+  /* Check if a stub is needed.  */
+  stub_type = bfd_xcoff_type_of_stub (input_section, rel, val, h);
+  if (stub_type != xcoff_stub_none)
+    {
+      asection *stub_csect;
+
+      stub_entry = bfd_xcoff_get_stub_entry (input_section, h, info);
+      if (stub_entry == NULL)
+	{
+	  _bfd_error_handler (_("Unable to find the stub entry targeting %s"),
+			      h->root.root.string);
+	  bfd_set_error (bfd_error_bad_value);
+	  return false;
+	}
+
+      stub_csect = stub_entry->hcsect->root.u.def.section;
+      val = (stub_entry->stub_offset
+	     + stub_csect->output_section->vma
+	     + stub_csect->output_offset);
+    }
+
   /* The original PC-relative relocation is biased by -r_vaddr, so adding
      the value below will give the absolute target address.  */
   *relocation = val + addend + rel->r_vaddr;
@@ -3159,7 +3233,8 @@ xcoff_reloc_type_crel (bfd *input_bfd ATTRIBUTE_UNUSED,
 		       bfd_vma val ATTRIBUTE_UNUSED,
 		       bfd_vma addend,
 		       bfd_vma *relocation,
-		       bfd_byte *contents ATTRIBUTE_UNUSED)
+		       bfd_byte *contents ATTRIBUTE_UNUSED,
+		       struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   howto->pc_relative = true;
   howto->src_mask &= ~3;
@@ -3184,7 +3259,8 @@ xcoff_reloc_type_tls (bfd *input_bfd ATTRIBUTE_UNUSED,
 		      bfd_vma val,
 		      bfd_vma addend,
 		      bfd_vma *relocation,
-		      bfd_byte *contents ATTRIBUTE_UNUSED)
+		      bfd_byte *contents ATTRIBUTE_UNUSED,
+		      struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
   struct xcoff_link_hash_entry *h;
 
@@ -3193,33 +3269,29 @@ xcoff_reloc_type_tls (bfd *input_bfd ATTRIBUTE_UNUSED,
 
   h = obj_xcoff_sym_hashes (input_bfd)[rel->r_symndx];
 
-  /* FIXME: R_TLSML is targeting a internal TOC symbol, which will
-     make the following checks failing. It should be moved with
-     R_TLSM bellow once it works.  */
+  /* R_TLSML is handled by the loader but must be from a
+     TOC entry targeting itslef.  This is already verified in
+     xcoff_link_add_symbols.
+     The value must be 0.  */
   if (howto->type == R_TLSML)
     {
       *relocation = 0;
       return true;
     }
 
-  /* FIXME: h is sometimes null, if the TLS symbol is not exported.  */
-  if (!h)
-    {
-      _bfd_error_handler
-	(_("%pB: TLS relocation at (0x%" BFD_VMA_FMT "x) over "
-	   "internal symbols (C_HIDEXT) not yet possible\n"),
-	 input_bfd, rel->r_vaddr);
-      return false;
-    }
-
+  /* The target symbol should always be available even if it's not
+     exported.  */
+  BFD_ASSERT (h != NULL);
 
   /* TLS relocations must target a TLS symbol.  */
   if (h->smclas != XMC_TL && h->smclas != XMC_UL)
     {
+      char vaddr_buf[128];
+
+      sprintf_vma (vaddr_buf, rel->r_vaddr);
       _bfd_error_handler
-	(_("%pB: TLS relocation at (0x%" BFD_VMA_FMT "x) over "
-	   "non-TLS symbol %s (0x%x)\n"),
-	 input_bfd, rel->r_vaddr, h->root.root.string, h->smclas);
+	(_("%pB: TLS relocation at 0x%s over non-TLS symbol %s (0x%x)\n"),
+	 input_bfd, vaddr_buf, h->root.root.string, h->smclas);
       return false;
     }
 
@@ -3230,16 +3302,17 @@ xcoff_reloc_type_tls (bfd *input_bfd ATTRIBUTE_UNUSED,
        && (h->flags & XCOFF_DEF_DYNAMIC) != 0)
 	  || (h->flags & XCOFF_IMPORT) != 0))
     {
+      char vaddr_buf[128];
+
+      sprintf_vma (vaddr_buf, rel->r_vaddr);
       _bfd_error_handler
-	(_("%pB: TLS local relocation at (0x%" BFD_VMA_FMT "x) over "
-	   "imported symbol %s\n"),
-	 input_bfd, rel->r_vaddr, h->root.root.string);
+	(_("%pB: TLS local relocation at 0x%s over imported symbol %s\n"),
+	 input_bfd, vaddr_buf, h->root.root.string);
       return false;
     }
 
-  /* R_TLSM and R_TLSML are relocations used by the loader.
-     The value must be 0.
-     FIXME: move R_TLSML here.  */
+  /* R_TLSM are relocations used by the loader.
+     The value must be 0.  */
   if (howto->type == R_TLSM)
     {
       *relocation = 0;
@@ -3572,10 +3645,10 @@ xcoff_complain_overflow_unsigned_func (bfd *input_bfd,
    R_TLS_LE:
    Thread-local storage relocation using local-exec model.
 
-   R_TLS:
+   R_TLSM:
    Tread-local storage relocation used by the loader.
 
-   R_TLSM:
+   R_TLSML:
    Tread-local storage relocation used by the loader.
 
    R_TOCU:
@@ -3638,11 +3711,15 @@ xcoff_ppc_relocate_section (bfd *output_bfd,
 	      break;
 
 	    default:
-	      _bfd_error_handler
-		(_("%pB: relocatation (%d) at (0x%" BFD_VMA_FMT "x) has wrong"
-		   " r_rsize (0x%x)\n"),
-		 input_bfd, rel->r_type, rel->r_vaddr, rel->r_size);
-	      return false;
+	      {
+		char vaddr_buf[128];
+
+		sprintf_vma (vaddr_buf, rel->r_vaddr);
+		_bfd_error_handler
+		  (_("%pB: relocation (%d) at 0x%s has wrong r_rsize (0x%x)\n"),
+		   input_bfd, rel->r_type, vaddr_buf, rel->r_size);
+		return false;
+	      }
 	    }
 	}
 
@@ -3719,7 +3796,7 @@ xcoff_ppc_relocate_section (bfd *output_bfd,
       if (rel->r_type >= XCOFF_MAX_CALCULATE_RELOCATION
 	  || !((*xcoff_calculate_relocation[rel->r_type])
 	       (input_bfd, input_section, output_bfd, rel, sym, &howto, val,
-		addend, &relocation, contents)))
+		addend, &relocation, contents, info)))
 	return false;
 
       /* address */
@@ -3837,8 +3914,8 @@ _bfd_xcoff_put_ldsymbol_name (bfd *abfd ATTRIBUTE_UNUSED,
 	  ldinfo->strings = newstrings;
 	}
 
-      bfd_put_16 (ldinfo->output_bfd, (bfd_vma) (len + 1),
-		  ldinfo->strings + ldinfo->string_size);
+      ldinfo->strings[ldinfo->string_size] = ((len + 1) >> 8) & 0xff;
+      ldinfo->strings[ldinfo->string_size + 1] = ((len + 1)) & 0xff;
       strcpy (ldinfo->strings + ldinfo->string_size + 2, name);
       ldsym->_l._l_l._l_zeroes = 0;
       ldsym->_l._l_l._l_offset = ldinfo->string_size + 2;
@@ -4237,6 +4314,34 @@ HOWTO (0,			/* type */
        0xffffffff,		/* dst_mask */
        false);			/* pcrel_offset */
 
+/* Indirect call stub
+   The first word of the code must be modified by filling in
+   the correct TOC offset.  */
+
+static const unsigned long xcoff_stub_indirect_call_code[4] =
+  {
+    0x81820000,	/* lwz r12,0(r2) */
+    0x800c0000,	/* lwz r0,0(r12) */
+    0x7c0903a6,	/* mtctr r0 */
+    0x4e800420,	/* bctr */
+  };
+
+/*  Shared call stub
+    The first word of the code must be modified by filling in
+    the correct TOC offset.
+    This is exactly as the glink code but without the traceback,
+    as it won't be an independent function.  */
+
+static const unsigned long xcoff_stub_shared_call_code[6] =
+  {
+    0x81820000,	/* lwz r12,0(r2) */
+    0x90410014,	/* stw r2,20(r1) */
+    0x800c0000,	/* lwz r0,0(r12) */
+    0x804c0004,	/* lwz r2,4(r12) */
+    0x7c0903a6,	/* mtctr r0 */
+    0x4e800420,	/* bctr */
+  };
+
 /*  glink
 
    The first word of global linkage code must be modified by filling in
@@ -4255,20 +4360,22 @@ static const unsigned long xcoff_glink_code[9] =
     0x00000000,	/* traceback table */
   };
 
-/* Table to convert DWARF flags to section names.  */
+/* Table to convert DWARF flags to section names.
+   Remember to update binutils/dwarf.c:debug_displays
+   if new DWARF sections are supported by XCOFF.  */
 
 const struct xcoff_dwsect_name xcoff_dwsect_names[] = {
-  { SSUBTYP_DWINFO,  ".dwinfo",   true },
-  { SSUBTYP_DWLINE,  ".dwline",   true },
-  { SSUBTYP_DWPBNMS, ".dwpbnms",  true },
-  { SSUBTYP_DWPBTYP, ".dwpbtyp",  true },
-  { SSUBTYP_DWARNGE, ".dwarnge",  true },
-  { SSUBTYP_DWABREV, ".dwabrev",  false },
-  { SSUBTYP_DWSTR,   ".dwstr",    true },
-  { SSUBTYP_DWRNGES, ".dwrnges",  true },
-  { SSUBTYP_DWLOC,   ".dwloc",    true },
-  { SSUBTYP_DWFRAME, ".dwframe",  true },
-  { SSUBTYP_DWMAC,   ".dwmac",    true }
+  { SSUBTYP_DWINFO,  ".dwinfo",  ".debug_info",     true },
+  { SSUBTYP_DWLINE,  ".dwline",  ".debug_line",     true },
+  { SSUBTYP_DWPBNMS, ".dwpbnms", ".debug_pubnames", true },
+  { SSUBTYP_DWPBTYP, ".dwpbtyp", ".debug_pubtypes", true },
+  { SSUBTYP_DWARNGE, ".dwarnge", ".debug_aranges",  true },
+  { SSUBTYP_DWABREV, ".dwabrev", ".debug_abbrev",   false },
+  { SSUBTYP_DWSTR,   ".dwstr",   ".debug_str",      true },
+  { SSUBTYP_DWRNGES, ".dwrnges", ".debug_ranges",   true },
+  { SSUBTYP_DWLOC,   ".dwloc",   ".debug_loc",      true },
+  { SSUBTYP_DWFRAME, ".dwframe", ".debug_frame",    true },
+  { SSUBTYP_DWMAC,   ".dwmac",   ".debug_macro",    true }
 };
 
 /* For generic entry points.  */
@@ -4451,6 +4558,14 @@ static const struct xcoff_backend_data_rec bfd_xcoff_backend_data =
     /* rtinit */
     64,				/* _xcoff_rtinit_size */
     xcoff_generate_rtinit,
+
+    /* Stub indirect call.  */
+    &xcoff_stub_indirect_call_code[0],
+    16,				/* _xcoff_stub_indirect_call_size */
+
+    /* Stub shared call.  */
+    &xcoff_stub_shared_call_code[0],
+    24,				/* _xcoff_stub_shared_call_size */
   };
 
 /* The transfer vector that leads the outside world to all of the above.  */
@@ -4633,6 +4748,14 @@ static const struct xcoff_backend_data_rec bfd_pmac_xcoff_backend_data =
     /* rtinit */
     0,				/* _xcoff_rtinit_size */
     xcoff_generate_rtinit,
+
+    /* Stub indirect call.  */
+    &xcoff_stub_indirect_call_code[0],
+    16,				/* _xcoff_stub_indirect_call_size */
+
+    /* Stub shared call.  */
+    &xcoff_stub_shared_call_code[0],
+    24,				/* _xcoff_stub_shared_call_size */
   };
 
 /* The transfer vector that leads the outside world to all of the above.  */

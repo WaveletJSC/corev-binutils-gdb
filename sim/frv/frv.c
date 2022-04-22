@@ -1,5 +1,5 @@
 /* frv simulator support code
-   Copyright (C) 1998-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
    Contributed by Red Hat.
 
 This file is part of the GNU simulators.
@@ -1182,10 +1182,12 @@ frvbf_shift_left_arith_saturate (SIM_CPU *current_cpu, SI arg1, SI arg2)
 
   /* Signed shift by 31 or greater saturates by definition.  */
   if (arg2 >= 31)
-    if (arg1 > 0)
-      return (SI) 0x7fffffff;
-    else
-      return (SI) 0x80000000;
+    {
+      if (arg1 > 0)
+	return (SI) 0x7fffffff;
+      else
+	return (SI) 0x80000000;
+    }
 
   /* OK, arg2 is between 1 and 31.  */
   neg_arg1 = (arg1 < 0);

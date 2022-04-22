@@ -1,6 +1,6 @@
 /* Native-dependent code for FreeBSD.
 
-   Copyright (C) 2004-2021 Free Software Foundation, Inc.
+   Copyright (C) 2004-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,6 +21,8 @@
 #define FBSD_NAT_H
 
 #include "inf-ptrace.h"
+#include "regcache.h"
+#include "regset.h"
 #include <osreldate.h>
 #include <sys/proc.h>
 
@@ -64,14 +66,20 @@ public:
 
   void update_thread_list () override;
 
+  bool can_async_p () override;
+
+  void async (int) override;
+
   thread_control_capabilities get_thread_control_capabilities () override
   { return tc_schedlock; }
+
+  void create_inferior (const char *, const std::string &,
+			char **, int) override;
 
   void resume (ptid_t, int, enum gdb_signal) override;
 
   ptid_t wait (ptid_t, struct target_waitstatus *, target_wait_flags) override;
 
-  void post_startup_inferior (ptid_t) override;
   void post_attach (int) override;
 
 #ifdef USE_SIGTRAP_SIGINFO
@@ -80,7 +88,7 @@ public:
 #endif
 
 #ifdef TDP_RFPPWAIT
-  void follow_fork (bool, bool) override;
+  void follow_fork (inferior *, ptid_t, target_waitkind, bool, bool) override;
 
   int insert_fork_catchpoint (int) override;
   int remove_fork_catchpoint (int) override;
@@ -98,6 +106,76 @@ public:
 #endif
 
   bool supports_multi_process () override;
+
+  bool supports_disable_randomization () override;
+
+  /* Methods meant to be overridden by arch-specific target
+     classes.  */
+
+  virtual void low_new_fork (ptid_t parent, pid_t child)
+  {}
+
+  /* The method to call, if any, when a thread is destroyed.  */
+  virtual void low_delete_thread (thread_info *)
+  {}
+
+  /* Hook to call prior to resuming a thread.  */
+  virtual void low_prepare_to_resume (thread_info *)
+  {}
+
+protected:
+
+  void post_startup_inferior (ptid_t) override;
+
+private:
+  ptid_t wait_1 (ptid_t, struct target_waitstatus *, target_wait_flags);
+
+  /* Helper routines for use in fetch_registers and store_registers in
+     subclasses.  These routines fetch and store a single set of
+     registers described by REGSET.  The REGSET's 'regmap' field must
+     point to an array of 'struct regcache_map_entry'.
+
+     FETCH_OP is a ptrace operation to fetch the set of registers from
+     a native thread.  STORE_OP is a ptrace operation to store the set
+     of registers to a native thread.
+
+     The caller must provide storage for the set of registers in REGS,
+     and SIZE is the size of the storage.
+
+     Returns true if the register set was transferred due to a
+     matching REGNUM.*/
+
+  bool fetch_register_set (struct regcache *regcache, int regnum, int fetch_op,
+			   const struct regset *regset, void *regs, size_t size);
+
+  bool store_register_set (struct regcache *regcache, int regnum, int fetch_op,
+			   int store_op, const struct regset *regset,
+			   void *regs, size_t size);
+protected:
+  /* Wrapper versions of the above helpers which accept a register set
+     type such as 'struct reg' or 'struct fpreg'.  */
+
+  template <class Regset>
+  bool fetch_register_set (struct regcache *regcache, int regnum, int fetch_op,
+			   const struct regset *regset)
+  {
+    Regset regs;
+    return fetch_register_set (regcache, regnum, fetch_op, regset, &regs,
+			       sizeof (regs));
+  }
+
+  template <class Regset>
+  bool store_register_set (struct regcache *regcache, int regnum, int fetch_op,
+			   int store_op, const struct regset *regset)
+  {
+    Regset regs;
+    return store_register_set (regcache, regnum, fetch_op, store_op, regset,
+			       &regs, sizeof (regs));
+  }
 };
+
+/* Fetch the signal information for PTID and store it in *SIGINFO.
+   Return true if successful.  */
+bool fbsd_nat_get_siginfo (ptid_t ptid, siginfo_t *siginfo);
 
 #endif /* fbsd-nat.h */

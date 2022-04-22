@@ -1,6 +1,6 @@
 /* Definitions for Ada expressions
 
-   Copyright (C) 2020, 2021 Free Software Foundation, Inc.
+   Copyright (C) 2020-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -95,6 +95,24 @@ struct ada_resolvable
 			bool parse_completion,
 			innermost_block_tracker *tracker,
 			struct type *context_type) = 0;
+
+  /* Possibly replace this object with some other expression object.
+     This is like 'resolve', but can return a replacement.
+
+     The default implementation calls 'resolve' and wraps this object
+     in a function call if that call returns true.  OWNER is a
+     reference to the unique pointer that owns the 'this'; it can be
+     'move'd from to construct the replacement.
+
+     This should either return a new object, or OWNER -- never
+     nullptr.  */
+
+  virtual operation_up replace (operation_up &&owner,
+				struct expression *exp,
+				bool deprocedure_p,
+				bool parse_completion,
+				innermost_block_tracker *tracker,
+				struct type *context_type);
 };
 
 /* In Ada, some generic operations must be wrapped with a handler that
@@ -425,6 +443,29 @@ public:
 
   enum exp_opcode opcode () const override
   { return STRUCTOP_STRUCT; }
+
+  /* Set the completion prefix.  */
+  void set_prefix (std::string &&prefix)
+  {
+    m_prefix = std::move (prefix);
+  }
+
+  bool complete (struct expression *exp, completion_tracker &tracker) override
+  {
+    return structop_base_operation::complete (exp, tracker, m_prefix.c_str ());
+  }
+
+  void dump (struct ui_file *stream, int depth) const override
+  {
+    structop_base_operation::dump (stream, depth);
+    dump_for_expression (stream, depth + 1, m_prefix);
+  }
+
+private:
+
+  /* We may need to provide a prefix to field name completion.  See
+     ada-exp.y:find_completion_bounds for details.  */
+  std::string m_prefix;
 };
 
 /* Function calls for Ada.  */
@@ -722,6 +763,50 @@ public:
 private:
 
   operation_up m_val;
+};
+
+/* A character constant expression.  This is a separate operation so
+   that it can participate in resolution, so that TYPE'(CST) can
+   work correctly for enums with character enumerators.  */
+class ada_char_operation : public long_const_operation,
+			   public ada_resolvable
+{
+public:
+
+  using long_const_operation::long_const_operation;
+
+  bool resolve (struct expression *exp,
+		bool deprocedure_p,
+		bool parse_completion,
+		innermost_block_tracker *tracker,
+		struct type *context_type) override
+  {
+    /* This should never be called, because this class also implements
+       'replace'.  */
+    gdb_assert_not_reached ("unexpected call");
+  }
+
+  operation_up replace (operation_up &&owner,
+			struct expression *exp,
+			bool deprocedure_p,
+			bool parse_completion,
+			innermost_block_tracker *tracker,
+			struct type *context_type) override;
+
+  value *evaluate (struct type *expect_type,
+		   struct expression *exp,
+		   enum noside noside) override;
+};
+
+class ada_concat_operation : public concat_operation
+{
+public:
+
+  using concat_operation::concat_operation;
+
+  value *evaluate (struct type *expect_type,
+		   struct expression *exp,
+		   enum noside noside) override;
 };
 
 } /* namespace expr */

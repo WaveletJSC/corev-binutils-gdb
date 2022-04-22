@@ -1,6 +1,6 @@
 /* General functions for the WDB TUI.
 
-   Copyright (C) 1998-2021 Free Software Foundation, Inc.
+   Copyright (C) 1998-2022 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -49,6 +49,19 @@
 
 #include "gdb_curses.h"
 #include "interps.h"
+
+/* See tui.h.  */
+
+bool debug_tui = false;
+
+/* Implement 'show debug tui'.  */
+
+static void
+show_tui_debug (struct ui_file *file, int from_tty,
+		struct cmd_list_element *c, const char *value)
+{
+  gdb_printf (file, _("TUI debugging is \"%s\".\n"), value);
+}
 
 /* This redefines CTRL if it is not already defined, so it must come
    after terminal state releated include files like <term.h> and
@@ -179,10 +192,7 @@ tui_rl_other_window (int count, int key)
 
   win_info = tui_next_win (tui_win_with_focus ());
   if (win_info)
-    {
-      tui_set_win_focus_to (win_info);
-      keypad (TUI_CMD_WIN->handle.get (), win_info != TUI_CMD_WIN);
-    }
+    tui_set_win_focus_to (win_info);
   return 0;
 }
 
@@ -357,6 +367,8 @@ gdb_getenv_term (void)
 void
 tui_enable (void)
 {
+  TUI_SCOPED_DEBUG_ENTER_EXIT;
+
   if (tui_active)
     return;
 
@@ -497,6 +509,8 @@ tui_enable (void)
 void
 tui_disable (void)
 {
+  TUI_SCOPED_DEBUG_ENTER_EXIT;
+
   if (!tui_active)
     return;
 
@@ -507,6 +521,10 @@ tui_disable (void)
   tui_remove_hooks ();
   rl_startup_hook = 0;
   rl_already_prompted = 0;
+
+#ifdef NCURSES_MOUSE_VERSION
+  mousemask (0, NULL);
+#endif
 
   /* Leave curses and restore previous gdb terminal setting.  */
   endwin ();
@@ -586,4 +604,13 @@ Usage: tui enable"),
 	   _("Disable TUI display mode.\n\
 Usage: tui disable"),
 	   tuicmd);
+
+  /* Debug this tui internals.  */
+  add_setshow_boolean_cmd ("tui", class_maintenance, &debug_tui,  _("\
+Set tui debugging."), _("\
+Show tui debugging."), _("\
+When true, tui specific internal debugging is enabled."),
+			   NULL,
+			   show_tui_debug,
+			   &setdebuglist, &showdebuglist);
 }

@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Free Software Foundation, Inc.
+# Copyright 1999-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -663,16 +663,46 @@ proc mi_gdb_load { arg } {
     return 0
 }
 
-# mi_gdb_test COMMAND PATTERN MESSAGE [IPATTERN] -- send a command to gdb; 
+# Return 1 if symbols were read in using -readnow.  Otherwise, return 0.
+# Based on readnow from lib/gdb.exp.
+
+proc mi_readnow { args } {
+    global mi_gdb_prompt
+
+    if { [llength $args] == 1 } {
+	set re [lindex $args 0]
+    } else {
+	set re ""
+    }
+
+    set readnow_p 0
+    set cmd "maint print objfiles $re"
+    send_gdb "$cmd\n"
+    gdb_expect {
+	-re ".gdb_index: faked for ..readnow.." {
+	    # Record that we've seen the above pattern.
+	    set readnow_p 1
+	    exp_continue
+	}
+	-re "\\^done\r\n$mi_gdb_prompt$" {
+	}
+    }
+
+    return $readnow_p
+}
+
+# mi_gdb_test COMMAND [PATTERN [MESSAGE [IPATTERN]]] -- send a command to gdb;
 #   test the result.
 #
 # COMMAND is the command to execute, send to GDB with send_gdb.  If
 #   this is the null string no command is sent.
 # PATTERN is the pattern to match for a PASS, and must NOT include
 #   the \r\n sequence immediately before the gdb prompt.
+#   If not specified, .* is used.
 # MESSAGE is the message to be printed.  (If this is the empty string,
 #   then sometimes we don't call pass or fail at all; I don't
 #   understand this at all.)
+#   If not specified, COMMAND is used.
 # IPATTERN is the pattern to match for the inferior's output.  This parameter
 #   is optional.  If present, it will produce a PASS if the match is
 #   successful, and a FAIL if unsuccessful.
@@ -689,9 +719,23 @@ proc mi_gdb_test { args } {
     global inferior_exited_re async
     upvar timeout timeout
 
-    set command [lindex $args 0]
-    set pattern [lindex $args 1]
-    set message [lindex $args 2]
+    if { [llength $args] >= 1 } then {
+	set command [lindex $args 0]
+    } else {
+	error "Not enough arguments in mi_gdb_test"
+    }
+
+    if { [llength $args] >= 2 } then {
+	set pattern [lindex $args 1]
+    } else {
+	set pattern ".*"
+    }
+
+    if { [llength $args] >= 3 } then {
+	set message [lindex $args 2]
+    } else {
+	set message $command
+    }
 
     if [llength $args]==4 {
 	set ipattern [lindex $args 3]
@@ -702,6 +746,10 @@ proc mi_gdb_test { args } {
 	set response_string [lindex $args 4]
     } else {
 	set question_string "^FOOBAR$"
+    }
+
+    if { [llength $args] >= 6 } {
+	error "Too many arguments in mi_gdb_test"
     }
 
     if $verbose>2 then {
@@ -1754,13 +1802,13 @@ proc mi_get_inline_test {testcase} {
 }
 
 # Sets temporary breakpoint at LOCATION.
-proc mi_tbreak {location} {
+proc mi_tbreak {location test} {
 
     global mi_gdb_prompt
 
     mi_gdb_test "-break-insert -t $location" \
 	{\^done,bkpt=.*} \
-	"run to $location (set breakpoint)"
+	$test
 }
 
 # Send COMMAND that must be a command that resumes
@@ -1816,15 +1864,16 @@ proc mi_send_resuming_command {command test} {
 # be determined.
 # Does not check that the line is the same as requested.
 # The caller can check itself if required.
-proc mi_continue_to_line {location test} {
-
-    mi_tbreak $location
-    mi_send_resuming_command "exec-continue" "run to $location (exec-continue)"
-    return [mi_get_stop_line $test]
+proc_with_prefix mi_continue_to_line {location test} {
+    with_test_prefix $test {
+	mi_tbreak $location "set temporary breakpoint"
+	mi_send_resuming_command "exec-continue" "continue to breakpoint"
+	return [mi_get_stop_line]
+    }
 }
 
 # Wait until gdb prints the current line.
-proc mi_get_stop_line {test} {
+proc mi_get_stop_line {} {
 
   global mi_gdb_prompt
   global async
@@ -1840,10 +1889,10 @@ proc mi_get_stop_line {test} {
 	  return $expect_out(1,string)
       }
       -re ".*$mi_gdb_prompt" {
-	  fail "wait for stop ($test)"
+	  fail "wait for stop (unexpected output)"
       }
       timeout {
-	  fail "wait for stop ($test)"
+	  fail "wait for stop (timeout)"
       }
   }
 }
@@ -1906,9 +1955,11 @@ proc mi_run_inline_test { testcase } {
 
 	if {$first==1} {
 	    # Start the program afresh.
-	    mi_tbreak "$mi_autotest_source:$line"
-	    mi_run_cmd
-	    set line_now [mi_get_stop_line "$testcase: step to $line"]
+	    mi_tbreak "$mi_autotest_source:$line" "set temporary breakpoint"
+	    if { [mi_run_cmd] < 0 } {
+		return -1
+	    }
+	    set line_now [mi_get_stop_line]
 	    set first 0
 	} elseif {$line_now!=$line} {
 	    set line_now [mi_continue_to_line "$mi_autotest_source:$line" "continue to $line"]
@@ -1926,7 +1977,7 @@ proc mi_run_inline_test { testcase } {
 	if { [mi_send_resuming_command "exec-next" "$testcase: step over $line"] != 0 } {
 	    return -1
 	}
-	set line_now [mi_get_stop_line "$testcase: step over $line"]
+	set line_now [mi_get_stop_line]
 
 	# We probably want to use 'uplevel' so that statements
 	# have direct access to global variables that the
@@ -1934,6 +1985,8 @@ proc mi_run_inline_test { testcase } {
 	# will need more experience to be sure.
 	eval $statements
     }
+
+    return 0
 }
 
 proc get_mi_thread_list {name} {

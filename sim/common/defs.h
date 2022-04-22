@@ -1,6 +1,6 @@
 /* The configure generated header settings.
 
-   Copyright 2002-2021 Free Software Foundation, Inc.
+   Copyright 2002-2022 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,8 +34,12 @@
 #undef PACKAGE_URL
 #undef PACKAGE_VERSION
 
-/* Include sim's various configure tests.  */
+/* Include common sim's various configure tests.  */
+#ifndef SIM_COMMON_BUILD
+#include "../config.h"
+#else
 #include "config.h"
+#endif
 
 #endif
 

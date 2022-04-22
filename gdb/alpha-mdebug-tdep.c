@@ -1,5 +1,5 @@
 /* Target-dependent mdebug code for the ALPHA architecture.
-   Copyright (C) 1993-2021 Free Software Foundation, Inc.
+   Copyright (C) 1993-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -114,7 +114,7 @@ find_proc_desc (CORE_ADDR pc)
 
   if (sym)
     {
-      proc_desc = (struct mdebug_extra_func_info *) SYMBOL_VALUE_BYTES (sym);
+      proc_desc = (struct mdebug_extra_func_info *) sym->value_bytes ();
 
       /* Correct incorrect setjmp procedure descriptor from the library
 	 to make backtrace through setjmp work.  */
@@ -333,7 +333,9 @@ alpha_mdebug_frame_sniffer (const struct frame_unwind *self,
   return 1;
 }
 
-static const struct frame_unwind alpha_mdebug_frame_unwind = {
+static const struct frame_unwind alpha_mdebug_frame_unwind =
+{
+  "alpha mdebug",
   NORMAL_FRAME,
   default_frame_unwind_stop_reason,
   alpha_mdebug_frame_this_id,

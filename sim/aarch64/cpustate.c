@@ -1,6 +1,6 @@
 /* cpustate.h -- Prototypes for AArch64 simulator functions.
 
-   Copyright (C) 2015-2021 Free Software Foundation, Inc.
+   Copyright (C) 2015-2022 Free Software Foundation, Inc.
 
    Contributed by Red Hat.
 
@@ -26,6 +26,7 @@
 #include <math.h>
 
 #include "sim-main.h"
+#include "sim-signal.h"
 #include "cpustate.h"
 #include "simulator.h"
 #include "libiberty.h"

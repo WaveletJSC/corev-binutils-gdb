@@ -1,5 +1,5 @@
 /* Internal interfaces for the Win32 specific target code for gdbserver.
-   Copyright (C) 2007-2021 Free Software Foundation, Inc.
+   Copyright (C) 2007-2022 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,9 +29,6 @@ struct target_desc;
 extern const struct target_desc *win32_tdesc;
 #ifdef __x86_64__
 extern const struct target_desc *wow64_win32_tdesc;
-
-typedef BOOL (WINAPI *winapi_Wow64GetThreadContext) (HANDLE, PWOW64_CONTEXT);
-extern winapi_Wow64GetThreadContext win32_Wow64GetThreadContext;
 #endif
 
 struct win32_target_ops
@@ -161,6 +158,8 @@ public:
   bool stopped_by_sw_breakpoint () override;
 
   bool supports_stopped_by_sw_breakpoint () override;
+
+  const char *thread_name (ptid_t thread) override;
 };
 
 /* Retrieve the context for this thread, if not already retrieved.  */

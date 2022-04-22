@@ -1,5 +1,5 @@
 /* Default profiling support.
-   Copyright (C) 1996-2021 Free Software Foundation, Inc.
+   Copyright (C) 1996-2022 Free Software Foundation, Inc.
    Contributed by Cygnus Support.
 
 This file is part of GDB, the GNU debugger.
@@ -20,14 +20,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 /* This must come before any other includes.  */
 #include "defs.h"
 
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "ansidecl.h"
+
 #include "sim-main.h"
 #include "sim-io.h"
 #include "sim-options.h"
 #include "sim-assert.h"
-
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
 
 #if !WITH_PROFILE_PC_P
 static unsigned int _profile_stub;
@@ -690,7 +693,7 @@ profile_print_pc (sim_cpu *cpu, int verbose)
       {
 	int ok;
 	/* FIXME: what if the target has a 64 bit PC? */
-	unsigned32 header[3];
+	uint32_t header[3];
 	unsigned loop;
 	if (PROFILE_PC_END (profile) != 0)
 	  {
@@ -715,7 +718,7 @@ profile_print_pc (sim_cpu *cpu, int verbose)
 	     ok && (loop < PROFILE_PC_NR_BUCKETS (profile));
 	     loop++)
 	  {
-	    signed16 sample;
+	    int16_t sample;
 	    if (PROFILE_PC_COUNT (profile) [loop] >= 0xffff)
 	      sample = 0xffff;
 	    else
@@ -1152,7 +1155,7 @@ profile_info (SIM_DESC sd, int verbose)
 #if WITH_PROFILE_MODEL_P
 	      || PROFILE_FLAGS (data) [PROFILE_MODEL_IDX]
 #endif
-#if WITH_PROFILE_SCACHE_P && WITH_SCACHE
+#if WITH_PROFILE_SCACHE_P && WITH_SCACHE && defined(CGEN_ARCH)
 	      || PROFILE_FLAGS (data) [PROFILE_SCACHE_IDX]
 #endif
 #if WITH_PROFILE_PC_P
@@ -1190,7 +1193,7 @@ profile_info (SIM_DESC sd, int verbose)
 	profile_print_model (cpu, verbose);
 #endif
 
-#if WITH_PROFILE_SCACHE_P && WITH_SCACHE
+#if WITH_PROFILE_SCACHE_P && WITH_SCACHE && defined(CGEN_ARCH)
       if (PROFILE_FLAGS (data) [PROFILE_SCACHE_IDX])
 	scache_print_profile (cpu, verbose);
 #endif
@@ -1216,10 +1219,12 @@ profile_info (SIM_DESC sd, int verbose)
 
 }
 
-/* Install profiling support in the simulator.  */
+/* Provide a prototype to silence -Wmissing-prototypes.  */
+SIM_RC sim_install_profile (SIM_DESC sd);
 
+/* Install profiling support in the simulator.  */
 SIM_RC
-profile_install (SIM_DESC sd)
+sim_install_profile (SIM_DESC sd)
 {
   int i;
 

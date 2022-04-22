@@ -2,8 +2,8 @@
 #include "defs.h"
 
 #include "sim-main.h"
+#include "sim-signal.h"
 #include "sim-syscall.h"
-#include "targ-vals.h"
 
 #include <time.h>
 #ifdef HAVE_UNISTD_H
@@ -25,10 +25,10 @@
 
 
 INLINE_SIM_MAIN (void)
-genericAdd(unsigned32 source, unsigned32 destReg)
+genericAdd(uint32_t source, uint32_t destReg)
 {
   int z, c, n, v;
-  unsigned32 dest, sum;
+  uint32_t dest, sum;
 
   dest = State.regs[destReg];
   sum = source + dest;
@@ -49,10 +49,10 @@ genericAdd(unsigned32 source, unsigned32 destReg)
 
 
 INLINE_SIM_MAIN (void)
-genericSub(unsigned32 source, unsigned32 destReg)
+genericSub(uint32_t source, uint32_t destReg)
 {
   int z, c, n, v;
-  unsigned32 dest, difference;
+  uint32_t dest, difference;
 
   dest = State.regs[destReg];
   difference = dest - source;
@@ -70,10 +70,10 @@ genericSub(unsigned32 source, unsigned32 destReg)
 }
 
 INLINE_SIM_MAIN (void)
-genericCmp(unsigned32 leftOpnd, unsigned32 rightOpnd)
+genericCmp(uint32_t leftOpnd, uint32_t rightOpnd)
 {
   int z, c, n, v;
-  unsigned32 value;
+  uint32_t value;
 
   value = rightOpnd - leftOpnd;
 
@@ -90,7 +90,7 @@ genericCmp(unsigned32 leftOpnd, unsigned32 rightOpnd)
 
 
 INLINE_SIM_MAIN (void)
-genericOr(unsigned32 source, unsigned32 destReg)
+genericOr(uint32_t source, uint32_t destReg)
 {
   int n, z;
 
@@ -103,7 +103,7 @@ genericOr(unsigned32 source, unsigned32 destReg)
 
 
 INLINE_SIM_MAIN (void)
-genericXor(unsigned32 source, unsigned32 destReg)
+genericXor(uint32_t source, uint32_t destReg)
 {
   int n, z;
 
@@ -116,9 +116,9 @@ genericXor(unsigned32 source, unsigned32 destReg)
 
 
 INLINE_SIM_MAIN (void)
-genericBtst(unsigned32 leftOpnd, unsigned32 rightOpnd)
+genericBtst(uint32_t leftOpnd, uint32_t rightOpnd)
 {
-  unsigned32 temp;
+  uint32_t temp;
   int z, n;
 
   temp = rightOpnd;
@@ -131,7 +131,7 @@ genericBtst(unsigned32 leftOpnd, unsigned32 rightOpnd)
 
 /* syscall */
 INLINE_SIM_MAIN (void)
-do_syscall (void)
+do_syscall (SIM_DESC sd)
 {
   /* Registers passed to trap 0.  */
 
@@ -149,7 +149,7 @@ do_syscall (void)
   int save_errno = errno;	
   errno = 0;
 
-  if (func == TARGET_SYS_exit)
+  if (cb_target_to_host_syscall (STATE_CALLBACK (sd), func) == CB_SYS_exit)
     {
       /* EXIT - caller can look in parm1 to work out the reason */
       sim_engine_halt (simulator, STATE_CPU (simulator, 0), NULL, PC,

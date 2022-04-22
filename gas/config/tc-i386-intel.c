@@ -1,5 +1,5 @@
 /* tc-i386.c -- Assemble Intel syntax code for ix86/x86-64
-   Copyright (C) 2009-2021 Free Software Foundation, Inc.
+   Copyright (C) 2009-2022 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -289,6 +289,13 @@ i386_intel_simplify_register (expressionS *e)
       return 0;
     }
 
+  if (!check_register (&i386_regtab[reg_num]))
+    {
+      as_bad (_("register '%s%s' cannot be used here"),
+	      register_prefix, i386_regtab[reg_num].reg_name);
+      return 0;
+    }
+
   if (!intel_state.in_bracket)
     {
       if (i.op[this_operand].regs)
@@ -529,6 +536,9 @@ static int i386_intel_simplify (expressionS *e)
       if (e->X_add_symbol
 	  && !i386_intel_simplify_symbol (e->X_add_symbol))
 	return 0;
+      if (!the_reg && this_operand >= 0
+	  && e->X_op == O_symbol && !e->X_add_number)
+	the_reg = i.op[this_operand].regs;
       if (e->X_op == O_add || e->X_op == O_subtract)
 	{
 	  base = intel_state.base;
@@ -606,7 +616,7 @@ i386_intel_operand (char *operand_string, int got_a_float)
   /* Handle vector operations.  */
   if (*input_line_pointer == '{')
     {
-      char *end = check_VecOperations (input_line_pointer, NULL);
+      char *end = check_VecOperations (input_line_pointer);
       if (end)
 	input_line_pointer = end;
       else
