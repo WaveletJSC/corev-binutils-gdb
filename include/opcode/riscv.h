@@ -69,8 +69,12 @@ static const char * const riscv_pred_succ[16] =
 #define RV_IMM_SIGN(x) (-(((x) >> 31) & 1))
 #define RV_IMM_SIGN_N(x, s, n) (-(((x) >> ((s) + (n) - 1)) & 1))
 
+#define EXTRACT_I5TYPE_UIMM(x) \
+  (RV_X(x, 25, 5))
 #define EXTRACT_ITYPE_IMM(x) \
   (RV_X(x, 20, 12) | (RV_IMM_SIGN(x) << 12))
+#define EXTRACT_ITYPE_IMM6L(x) \
+  (RV_X(x, 20, 6))
 #define EXTRACT_STYPE_IMM(x) \
   (RV_X(x, 7, 5) | (RV_X(x, 25, 7) << 5) | (RV_IMM_SIGN(x) << 12))
 #define EXTRACT_BTYPE_IMM(x) \
@@ -119,6 +123,14 @@ static const char * const riscv_pred_succ[16] =
   (RV_X(x, 20, 10))
 #define EXTRACT_RVV_VC_IMM(x) \
   (RV_X(x, 20, 11))
+#define EXTRACT_PTYPE_IMM3U(x) \
+  (RV_X(x, 20, 3))
+#define EXTRACT_PTYPE_IMM4U(x) \
+  (RV_X(x, 20, 4))
+#define EXTRACT_PTYPE_IMM5U(x) \
+  (RV_X(x, 20, 5))
+#define EXTRACT_PTYPE_IMM6U(x) \
+  (RV_X(x, 20, 6))
 
 /* CORE-V Specific.  */
 #define EXTRACT_CV_HWLP_UIMM5(x) \
@@ -133,8 +145,6 @@ static const char * const riscv_pred_succ[16] =
   (RV_X(x, 20, 5))
 #define EXTRACT_CV_BI_IMM5(x) \
   (RV_X(x, 20, 5) | (RV_IMM_SIGN_N(x, 20, 5) << 5))
-#define EXTRACT_CV_SIMD_IMM6(x) \
-  ((RV_X(x, 25, 1)) | (RV_X(x, 20, 5) << 1) | (RV_IMM_SIGN_N(x, 20, 5) << 5))
 
 /* ZC Specific.  */
 #define EXTRACT_ZCB_BYTE_UIMM(x) \
@@ -194,6 +204,16 @@ static const char * const riscv_pred_succ[16] =
   (RV_X(x, 0, 10) << 20)
 #define ENCODE_RVV_VC_IMM(x) \
   (RV_X(x, 0, 11) << 20)
+#define ENCODE_PTYPE_IMM3U(x) \
+  (RV_X(x, 0, 3) << 20)
+#define ENCODE_PTYPE_IMM4U(x) \
+  (RV_X(x, 0, 4) << 20)
+#define ENCODE_PTYPE_IMM5U(x) \
+  (RV_X(x, 0, 5) << 20)
+#define ENCODE_PTYPE_IMM6U(x) \
+  (RV_X(x, 0, 6) << 20)
+#define ENCODE_ITYPE_IMM6L(x) \
+  (RV_X(x, 0, 6) << 20)
 
 /* CORE-V Specific.  */
 #define ENCODE_CV_UIMM5(x) \
@@ -206,8 +226,8 @@ static const char * const riscv_pred_succ[16] =
   (RV_X(x, 0, 5) << 25)
 #define ENCODE_CV_ALU_UIMM5(x) \
   (RV_X(x, 0, 5) << 20)
-#define ENCODE_CV_SIMD_IMM6(x) \
-  ((RV_X(x, 0, 1) << 25) | (RV_X(x, 1, 5) << 20))
+#define ENCODE_I5TYPE_UIMM(x) \
+  (RV_X(x, 0, 5) << 25)
 
 /* ZC Specific.  */
 #define ENCODE_ZCB_BYTE_UIMM(x) \
@@ -230,9 +250,9 @@ static const char * const riscv_pred_succ[16] =
 #define VALID_JTYPE_IMM(x) (EXTRACT_JTYPE_IMM(ENCODE_JTYPE_IMM(x)) == (x))
 #define VALID_CITYPE_IMM(x) (EXTRACT_CITYPE_IMM(ENCODE_CITYPE_IMM(x)) == (x))
 #define VALID_CITYPE_LUI_IMM(x) (ENCODE_CITYPE_LUI_IMM(x) != 0 \
-				 && EXTRACT_CITYPE_LUI_IMM(ENCODE_CITYPE_LUI_IMM(x)) == (x))
+         && EXTRACT_CITYPE_LUI_IMM(ENCODE_CITYPE_LUI_IMM(x)) == (x))
 #define VALID_CITYPE_ADDI16SP_IMM(x) (ENCODE_CITYPE_ADDI16SP_IMM(x) != 0 \
-				      && EXTRACT_CITYPE_ADDI16SP_IMM(ENCODE_CITYPE_ADDI16SP_IMM(x)) == (x))
+              && EXTRACT_CITYPE_ADDI16SP_IMM(ENCODE_CITYPE_ADDI16SP_IMM(x)) == (x))
 #define VALID_CITYPE_LWSP_IMM(x) (EXTRACT_CITYPE_LWSP_IMM(ENCODE_CITYPE_LWSP_IMM(x)) == (x))
 #define VALID_CITYPE_LDSP_IMM(x) (EXTRACT_CITYPE_LDSP_IMM(ENCODE_CITYPE_LDSP_IMM(x)) == (x))
 #define VALID_CSSTYPE_IMM(x) (EXTRACT_CSSTYPE_IMM(ENCODE_CSSTYPE_IMM(x)) == (x))
@@ -247,6 +267,10 @@ static const char * const riscv_pred_succ[16] =
 #define VALID_CJTYPE_IMM(x) (EXTRACT_CJTYPE_IMM(ENCODE_CJTYPE_IMM(x)) == (x))
 #define VALID_RVV_VB_IMM(x) (EXTRACT_RVV_VB_IMM(ENCODE_RVV_VB_IMM(x)) == (x))
 #define VALID_RVV_VC_IMM(x) (EXTRACT_RVV_VC_IMM(ENCODE_RVV_VC_IMM(x)) == (x))
+#define VALID_PTYPE_IMM3U(x) (EXTRACT_PTYPE_IMM3U(ENCODE_PTYPE_IMM3U(x)) == (x))
+#define VALID_PTYPE_IMM4U(x) (EXTRACT_PTYPE_IMM4U(ENCODE_PTYPE_IMM4U(x)) == (x))
+#define VALID_PTYPE_IMM5U(x) (EXTRACT_PTYPE_IMM5U(ENCODE_PTYPE_IMM5U(x)) == (x))
+#define VALID_PTYPE_IMM6U(x) (EXTRACT_PTYPE_IMM6U(ENCODE_PTYPE_IMM6U(x)) == (x))
 
 /* ZC Specific.  */
 #define VALID_ZCB_BYTE_UIMM(x) (EXTRACT_ZCB_BYTE_UIMM(ENCODE_ZCB_BYTE_UIMM(x)) == (x))
@@ -294,30 +318,30 @@ static const char * const riscv_pred_succ[16] =
 
 /* RV fields.  */
 
-#define OP_MASK_OP		0x7f
-#define OP_SH_OP		0
-#define OP_MASK_RS2		0x1f
-#define OP_SH_RS2		20
-#define OP_MASK_RS1		0x1f
-#define OP_SH_RS1		15
-#define OP_MASK_RS3		0x1fU
-#define OP_SH_RS3		27
-#define OP_MASK_RD		0x1f
-#define OP_SH_RD		7
-#define OP_MASK_SHAMT		0x3f
-#define OP_SH_SHAMT		20
-#define OP_MASK_SHAMTW		0x1f
-#define OP_SH_SHAMTW		20
-#define OP_MASK_RM		0x7
-#define OP_SH_RM		12
-#define OP_MASK_PRED		0xf
-#define OP_SH_PRED		24
-#define OP_MASK_SUCC		0xf
-#define OP_SH_SUCC		20
-#define OP_MASK_AQ		0x1
-#define OP_SH_AQ		26
-#define OP_MASK_RL		0x1
-#define OP_SH_RL		25
+#define OP_MASK_OP    0x7f
+#define OP_SH_OP    0
+#define OP_MASK_RS2   0x1f
+#define OP_SH_RS2   20
+#define OP_MASK_RS1   0x1f
+#define OP_SH_RS1   15
+#define OP_MASK_RS3   0x1fU
+#define OP_SH_RS3   27
+#define OP_MASK_RD    0x1f
+#define OP_SH_RD    7
+#define OP_MASK_SHAMT   0x3f
+#define OP_SH_SHAMT   20
+#define OP_MASK_SHAMTW    0x1f
+#define OP_SH_SHAMTW    20
+#define OP_MASK_RM    0x7
+#define OP_SH_RM    12
+#define OP_MASK_PRED    0xf
+#define OP_SH_PRED    24
+#define OP_MASK_SUCC    0xf
+#define OP_SH_SUCC    20
+#define OP_MASK_AQ    0x1
+#define OP_SH_AQ    26
+#define OP_MASK_RL    0x1
+#define OP_SH_RL    25
 
 /* CORE-V Specific.  */
 #define OP_MASK_IMM12           0xfff
@@ -326,45 +350,49 @@ static const char * const riscv_pred_succ[16] =
 #define OP_SH_IMM5              15
 #define OP_MASK_LN              0x1
 #define OP_SH_LN                7
+/* balasr: PULP V0/V1 legacy for p.sb */
+#define OP_MASK_PULP_RS3        0x1f
+#define OP_SH_PULP_RS3          7
+// #define OP_SH_PULP_RS3          25
 
 /* ZC Specific */
-#define OP_MASK_RLIST		0xf
-#define OP_SH_RLIST		4
-#define OP_MASK_SREG1		0x7
-#define OP_SH_SREG1		7
-#define OP_MASK_SREG2		0x7
-#define OP_SH_SREG2		2
+#define OP_MASK_RLIST   0xf
+#define OP_SH_RLIST   4
+#define OP_MASK_SREG1   0x7
+#define OP_SH_SREG1   7
+#define OP_MASK_SREG2   0x7
+#define OP_SH_SREG2   2
 
-#define OP_MASK_CSR		0xfffU
-#define OP_SH_CSR		20
+#define OP_MASK_CSR   0xfffU
+#define OP_SH_CSR   20
 
-#define OP_MASK_FUNCT3		0x7
-#define OP_SH_FUNCT3		12
-#define OP_MASK_FUNCT7		0x7fU
-#define OP_SH_FUNCT7		25
-#define OP_MASK_FUNCT2		0x3
-#define OP_SH_FUNCT2		25
+#define OP_MASK_FUNCT3    0x7
+#define OP_SH_FUNCT3    12
+#define OP_MASK_FUNCT7    0x7fU
+#define OP_SH_FUNCT7    25
+#define OP_MASK_FUNCT2    0x3
+#define OP_SH_FUNCT2    25
 
 /* RVC fields.  */
 
-#define OP_MASK_OP2		0x3
-#define OP_SH_OP2		0
+#define OP_MASK_OP2   0x3
+#define OP_SH_OP2   0
 
-#define OP_MASK_CRS2		0x1f
-#define OP_SH_CRS2		2
-#define OP_MASK_CRS1S		0x7
-#define OP_SH_CRS1S		7
-#define OP_MASK_CRS2S		0x7
-#define OP_SH_CRS2S		2
+#define OP_MASK_CRS2    0x1f
+#define OP_SH_CRS2    2
+#define OP_MASK_CRS1S   0x7
+#define OP_SH_CRS1S   7
+#define OP_MASK_CRS2S   0x7
+#define OP_SH_CRS2S   2
 
-#define OP_MASK_CFUNCT6		0x3f
-#define OP_SH_CFUNCT6		10
-#define OP_MASK_CFUNCT4		0xf
-#define OP_SH_CFUNCT4		12
-#define OP_MASK_CFUNCT3		0x7
-#define OP_SH_CFUNCT3		13
-#define OP_MASK_CFUNCT2		0x3
-#define OP_SH_CFUNCT2		5
+#define OP_MASK_CFUNCT6   0x3f
+#define OP_SH_CFUNCT6   10
+#define OP_MASK_CFUNCT4   0xf
+#define OP_SH_CFUNCT4   12
+#define OP_MASK_CFUNCT3   0x7
+#define OP_SH_CFUNCT3   13
+#define OP_MASK_CFUNCT2   0x3
+#define OP_SH_CFUNCT2   5
 
 /* Scalar crypto fields. */
 
@@ -375,28 +403,28 @@ static const char * const riscv_pred_succ[16] =
 
 /* RVV fields.  */
 
-#define OP_MASK_VD		0x1f
-#define OP_SH_VD		7
-#define OP_MASK_VS1		0x1f
-#define OP_SH_VS1		15
-#define OP_MASK_VS2		0x1f
-#define OP_SH_VS2		20
-#define OP_MASK_VIMM		0x1f
-#define OP_SH_VIMM		15
-#define OP_MASK_VMASK		0x1
-#define OP_SH_VMASK		25
-#define OP_MASK_VFUNCT6		0x3f
-#define OP_SH_VFUNCT6		26
-#define OP_MASK_VLMUL		0x7
-#define OP_SH_VLMUL		0
-#define OP_MASK_VSEW		0x7
-#define OP_SH_VSEW		3
-#define OP_MASK_VTA		0x1
-#define OP_SH_VTA		6
-#define OP_MASK_VMA		0x1
-#define OP_SH_VMA		7
-#define OP_MASK_VWD		0x1
-#define OP_SH_VWD		26
+#define OP_MASK_VD    0x1f
+#define OP_SH_VD    7
+#define OP_MASK_VS1   0x1f
+#define OP_SH_VS1   15
+#define OP_MASK_VS2   0x1f
+#define OP_SH_VS2   20
+#define OP_MASK_VIMM    0x1f
+#define OP_SH_VIMM    15
+#define OP_MASK_VMASK   0x1
+#define OP_SH_VMASK   25
+#define OP_MASK_VFUNCT6   0x3f
+#define OP_SH_VFUNCT6   26
+#define OP_MASK_VLMUL   0x7
+#define OP_SH_VLMUL   0
+#define OP_MASK_VSEW    0x7
+#define OP_SH_VSEW    3
+#define OP_MASK_VTA   0x1
+#define OP_SH_VTA   6
+#define OP_MASK_VMA   0x1
+#define OP_SH_VMA   7
+#define OP_MASK_VWD   0x1
+#define OP_SH_VWD   26
 
 #define NVECR 32
 #define NVECM 1
@@ -433,7 +461,7 @@ static const char * const riscv_pred_succ[16] =
    VALUE << SHIFT.  VALUE is evaluated exactly once.  */
 #define INSERT_BITS(STRUCT, VALUE, MASK, SHIFT) \
   (STRUCT) = (((STRUCT) & ~((insn_t)(MASK) << (SHIFT))) \
-	      | ((insn_t)((VALUE) & (MASK)) << (SHIFT)))
+        | ((insn_t)((VALUE) & (MASK)) << (SHIFT)))
 
 /* Extract bits MASK << SHIFT from STRUCT and shift them right
    SHIFT places.  */
@@ -477,8 +505,6 @@ enum riscv_insn_class
   INSN_CLASS_COREV_ALU,
   INSN_CLASS_COREV_MEM,
   INSN_CLASS_COREV_BI,
-  INSN_CLASS_COREV_ELW,
-  INSN_CLASS_COREV_SIMD,
   INSN_CLASS_ZBA,
   INSN_CLASS_ZBB,
   INSN_CLASS_ZBC,
@@ -507,7 +533,12 @@ enum riscv_insn_class
   INSN_CLASS_ZCMB,
   INSN_CLASS_ZCMP,
   INSN_CLASS_ZCMT,
-  INSN_CLASS_ZCMP_OR_ZCMPE
+  INSN_CLASS_ZCMP_OR_ZCMPE,
+  INSN_CLASS_ZPN,
+  INSN_CLASS_ZPSF,
+  INSN_CLASS_ZBPBO,
+  INSN_CLASS_XPULPPOSTMOD,
+  INSN_CLASS_XPULPBITOP,
 };
 
 /* This structure holds information for a particular instruction.  */
@@ -549,38 +580,38 @@ struct riscv_opcode
 };
 
 /* Instruction is a simple alias (e.g. "mv" for "addi").  */
-#define	INSN_ALIAS		0x00000001
+#define INSN_ALIAS    0x00000001
 
 /* These are for setting insn_info fields.
 
    Nonbranch is the default.  Noninsn is used only if there is no match.
    There are no condjsr or dref2 instructions.  So that leaves condbranch,
    branch, jsr, and dref that we need to handle here, encoded in 3 bits.  */
-#define INSN_TYPE		0x0000000e
+#define INSN_TYPE   0x0000000e
 
 /* Instruction is an unconditional branch.  */
-#define INSN_BRANCH		0x00000002
+#define INSN_BRANCH   0x00000002
 /* Instruction is a conditional branch.  */
-#define INSN_CONDBRANCH		0x00000004
+#define INSN_CONDBRANCH   0x00000004
 /* Instruction is a jump to subroutine.  */
-#define INSN_JSR		0x00000006
+#define INSN_JSR    0x00000006
 /* Instruction is a data reference.  */
-#define INSN_DREF		0x00000008
+#define INSN_DREF   0x00000008
 /* Instruction is allowed when eew >= 64.  */
-#define INSN_V_EEW64		0x10000000
+#define INSN_V_EEW64    0x10000000
 
 /* We have 5 data reference sizes, which we can encode in 3 bits.  */
-#define INSN_DATA_SIZE		0x00000070
-#define INSN_DATA_SIZE_SHIFT	4
-#define INSN_1_BYTE		0x00000010
-#define INSN_2_BYTE		0x00000020
-#define INSN_4_BYTE		0x00000030
-#define INSN_8_BYTE		0x00000040
-#define INSN_16_BYTE		0x00000050
+#define INSN_DATA_SIZE    0x00000070
+#define INSN_DATA_SIZE_SHIFT  4
+#define INSN_1_BYTE   0x00000010
+#define INSN_2_BYTE   0x00000020
+#define INSN_4_BYTE   0x00000030
+#define INSN_8_BYTE   0x00000040
+#define INSN_16_BYTE    0x00000050
 
 /* Instruction is actually a macro.  It should be ignored by the
    disassembler, and requires special treatment by the assembler.  */
-#define INSN_MACRO		0xffffffff
+#define INSN_MACRO    0xffffffff
 
 /* This is a list of macro expanded instructions.  */
 enum
@@ -621,9 +652,9 @@ enum
 /* The mapping symbol states.  */
 enum riscv_seg_mstate
 {
-  MAP_NONE = 0,		/* Must be zero, for seginfo in new sections.  */
-  MAP_DATA,		/* Data.  */
-  MAP_INSN,		/* Instructions.  */
+  MAP_NONE = 0,   /* Must be zero, for seginfo in new sections.  */
+  MAP_DATA,   /* Data.  */
+  MAP_INSN,   /* Instructions.  */
 };
 
 extern const char * const riscv_gpr_names_numeric[NGPR];

@@ -1182,6 +1182,12 @@ static struct riscv_implicit_subset riscv_implicit_subsets[] =
   {"zcmpe", "zca",	check_implicit_always},
   {"zcf", "zca",	check_implicit_always},
   {"zcb", "zca",	check_implicit_always},
+  {"p", "zpn", check_implicit_always},
+  {"p", "zpsf", check_implicit_always},
+  {"p", "zbpbo", check_implicit_always},
+  {"n", "xpulppostmod", check_implicit_always},
+  {"n", "xpulpbitop", check_implicit_always},
+  // {"xpulpv3", "xpulppostmod", check_implicit_always},
   {NULL, NULL, NULL}
 };
 
@@ -1233,6 +1239,10 @@ static struct riscv_supported_ext riscv_supported_std_ext[] =
   {"c",		ISA_SPEC_CLASS_20190608,	2, 0, 0 },
   {"c",		ISA_SPEC_CLASS_2P2,		2, 0, 0 },
   {"v",		ISA_SPEC_CLASS_DRAFT,		1, 0, 0 },
+  {"p",                ISA_SPEC_CLASS_DRAFT, 2, 0, 0 },
+  // {"n",                ISA_SPEC_CLASS_DRAFT, 2, 0, 0 },
+    // {"xpulpv3",      ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
+  {"n",      ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
   {NULL, 0, 0, 0, 0}
 };
 
@@ -1291,8 +1301,14 @@ static struct riscv_supported_ext riscv_supported_std_z_ext[] =
   {"zcmp",		ISA_SPEC_CLASS_DRAFT,		0, 70, 4 },
   {"zcmpe",		ISA_SPEC_CLASS_DRAFT,		0, 70, 4 },
   {"zcmt",		ISA_SPEC_CLASS_DRAFT,		0, 70, 4 },
+  {"zpn", ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
+  {"zpsf", ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
+  {"zbpbo", ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
+  {"xpulppostmod", ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
+  {"xpulpbitop", ISA_SPEC_CLASS_DRAFT, 2, 0,  0 },
   {NULL, 0, 0, 0, 0}
 };
+
 
 static struct riscv_supported_ext riscv_supported_std_s_ext[] =
 {
@@ -1624,8 +1640,8 @@ riscv_parse_add_subset (riscv_parse_subset_t *rps,
     {
       if (subset[0] == 'x')
 	rps->error_handler
-	  (_("x ISA extension `%s' must be set with the versions"),
-	   subset);
+	  (_("x ISA extension `%s' `%s' must be set with the versions aaa"),
+	   subset, subset[1]);
       /* Allow old ISA spec can recognize zicsr and zifencei.  */
       else if (strcmp (subset, "zicsr") != 0
 	       && strcmp (subset, "zifencei") != 0)
@@ -2488,12 +2504,6 @@ riscv_multi_subset_supports (riscv_parse_subset_t *rps,
     case INSN_CLASS_COREV_BI:
       return (riscv_subset_supports (rps, "xcorevbi")
 	      || riscv_subset_supports (rps, "xcorev"));
-    case INSN_CLASS_COREV_ELW:
-      return (riscv_subset_supports (rps, "xcorevelw")
-	      || riscv_subset_supports (rps, "xcorev"));
-    case INSN_CLASS_COREV_SIMD:
-      return (riscv_subset_supports (rps, "xcorevsimd")
-	      || riscv_subset_supports (rps, "xcorev"));
     case INSN_CLASS_ZBA:
       return riscv_subset_supports (rps, "zba");
     case INSN_CLASS_ZBB:
@@ -2558,9 +2568,23 @@ riscv_multi_subset_supports (riscv_parse_subset_t *rps,
     case INSN_CLASS_ZCMP_OR_ZCMPE:
       return (riscv_subset_supports (rps, "zcmp")
 	    || riscv_subset_supports (rps, "zcmpe"));
+    case INSN_CLASS_ZPN:
+	    printf("hihihihi_zpn INSN_CLASS_ZPN\n");
+	    // printf("huhuhuhu_zpn %s\n", riscv_subset_supports (rps, "zpn"));
+      return riscv_subset_supports (rps, "zpn");
+    case INSN_CLASS_ZPSF:
+      return riscv_subset_supports (rps, "zpsf");
+    case INSN_CLASS_ZBPBO:
+      return riscv_subset_supports (rps, "zbpbo");
+    case INSN_CLASS_XPULPPOSTMOD:
+    	// printf("hihihihi INSN_CLASS_XPULPPOSTMOD\n");
+      // printf("huhuhuhu %s\n", riscv_subset_supports (rps, "xpulppostmod"));
+      return riscv_subset_supports (rps, "xpulppostmod");
+    case INSN_CLASS_XPULPBITOP:
+    	return riscv_subset_supports (rps, "xpulpbitop");
     default:
       rps->error_handler
-        (_("internal: unreachable INSN_CLASS_*"));
+        (_("internal: unreachable INSN_CLASS_* bbb"));
       return false;
     }
 }
@@ -2628,10 +2652,6 @@ riscv_multi_subset_supports_ext (riscv_parse_subset_t *rps,
       return "xcorevmem' or `xcorev";
     case INSN_CLASS_COREV_BI:
       return "xcorevbi' or `xcorev";
-    case INSN_CLASS_COREV_ELW:
-      return "xcorevelw' or `xcorev";
-    case INSN_CLASS_COREV_SIMD:
-      return "xcorevsimd' or `xcorev";
     case INSN_CLASS_ZBA:
       return "zba";
     case INSN_CLASS_ZBB:
@@ -2686,7 +2706,7 @@ riscv_multi_subset_supports_ext (riscv_parse_subset_t *rps,
       return "zcmp' or `zcmpe";
     default:
       rps->error_handler
-        (_("internal: unreachable INSN_CLASS_*"));
+        (_("internal: unreachable INSN_CLASS_* aaa"));
       return NULL;
     }
 }

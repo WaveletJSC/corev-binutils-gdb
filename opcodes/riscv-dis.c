@@ -47,11 +47,11 @@ unsigned xlen = 0;
 static riscv_subset_list_t riscv_subsets;
 static riscv_parse_subset_t riscv_rps_dis =
 {
-  &riscv_subsets,	/* subset_list.  */
+  &riscv_subsets, /* subset_list.  */
   opcodes_error_handler,/* error_handler.  */
-  &xlen,		/* xlen.  */
-  &default_isa_spec,	/* isa_spec.  */
-  false,		/* check_unknown_prefixed_ext.  */
+  &xlen,    /* xlen.  */
+  &default_isa_spec,  /* isa_spec.  */
+  false,    /* check_unknown_prefixed_ext.  */
 };
 
 struct riscv_private_data
@@ -135,17 +135,17 @@ parse_riscv_dis_option (const char *option)
 
       RISCV_GET_PRIV_SPEC_CLASS (value, priv_spec);
       if (priv_spec == PRIV_SPEC_CLASS_NONE)
-	opcodes_error_handler (_("unknown privileged spec set by %s=%s"),
-			       option, value);
+  opcodes_error_handler (_("unknown privileged spec set by %s=%s"),
+             option, value);
       else if (default_priv_spec == PRIV_SPEC_CLASS_NONE)
-	default_priv_spec = priv_spec;
+  default_priv_spec = priv_spec;
       else if (default_priv_spec != priv_spec)
-	{
-	  RISCV_GET_PRIV_SPEC_NAME (name, default_priv_spec);
-	  opcodes_error_handler (_("mis-matched privilege spec set by %s=%s, "
-				   "the elf privilege attribute is %s"),
-				 option, value, name);
-	}
+  {
+    RISCV_GET_PRIV_SPEC_NAME (name, default_priv_spec);
+    opcodes_error_handler (_("mis-matched privilege spec set by %s=%s, "
+           "the elf privilege attribute is %s"),
+         option, value, name);
+  }
     }
   else
     {
@@ -164,7 +164,7 @@ parse_riscv_dis_options (const char *opts_in)
   for ( ; opt_end != NULL; opt = opt_end + 1)
     {
       if ((opt_end = strchr (opt, ',')) != NULL)
-	*opt_end = 0;
+  *opt_end = 0;
       parse_riscv_dis_option (opt);
     }
 
@@ -175,7 +175,7 @@ parse_riscv_dis_options (const char *opts_in)
 
 static void
 arg_print (struct disassemble_info *info, unsigned long val,
-	   const char* const* array, size_t size)
+     const char* const* array, size_t size)
 {
   const char *s = val >= size || array[val] == NULL ? "unknown" : array[val];
   (*info->fprintf_styled_func) (info->stream, dis_style_text, "%s", s);
@@ -183,7 +183,7 @@ arg_print (struct disassemble_info *info, unsigned long val,
 
 static void
 maybe_print_address (struct riscv_private_data *pd, int base_reg, int offset,
-		     int wide)
+         int wide)
 {
   if (pd->hi_addr[base_reg] != (bfd_vma)-1)
     {
@@ -218,7 +218,7 @@ print_jvt_index (disassemble_info *info, unsigned int index)
     return false;
 
   entry_value = xlen == 32 ? bfd_getl32 (packet)
-			    : bfd_getl64 (packet);
+          : bfd_getl64 (packet);
 
   maybe_print_address (pd, 0, entry_value, 0);
   return true;
@@ -240,7 +240,7 @@ print_jvt_entry_value (disassemble_info *info, bfd_vma memaddr)
     return false;
 
   entry_value = xlen == 32 ? bfd_getl32 (packet)
-			    : bfd_getl64 (packet);
+          : bfd_getl64 (packet);
 
   info->target = entry_value;
   (*info->fprintf_func) (info->stream, "index %u # ", index);
@@ -261,20 +261,20 @@ print_rlist (disassemble_info *info, insn_t l)
     info->fprintf_func (info->stream, ",%s", riscv_gpr_names[X_S0]);
   else if (rlist == 6 || (numeric && rlist > 6))
     info->fprintf_func (info->stream, ",%s-%s",
-	  riscv_gpr_names[X_S0],
-	  riscv_gpr_names[X_S1]);
+    riscv_gpr_names[X_S0],
+    riscv_gpr_names[X_S1]);
 
   if (rlist == 15)
     info->fprintf_func (info->stream, ",%s-%s",
-	  riscv_gpr_names[r_start],
-	  riscv_gpr_names[X_S11]);
+    riscv_gpr_names[r_start],
+    riscv_gpr_names[X_S11]);
   else if (rlist == 7 && numeric)
     info->fprintf_func (info->stream, ",%s",
-	  riscv_gpr_names[X_S2]);
+    riscv_gpr_names[X_S2]);
   else if (rlist > 6)
     info->fprintf_func (info->stream, ",%s-%s",
-	  riscv_gpr_names[r_start],
-	  riscv_gpr_names[rlist + 11]);
+    riscv_gpr_names[r_start],
+    riscv_gpr_names[rlist + 11]);
 }
 
 /* Get ZCMP sp adjustment immediate. */
@@ -311,6 +311,7 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
   struct riscv_private_data *pd = info->private_data;
   int rs1 = (l >> OP_SH_RS1) & OP_MASK_RS1;
   int rd = (l >> OP_SH_RD) & OP_MASK_RD;
+  int rs2 = (l >> 20) & 0x1f;
   fprintf_styled_ftype print = info->fprintf_styled_func;
   const char *opargStart;
 
@@ -321,104 +322,104 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
     {
       opargStart = oparg;
       switch (*oparg)
-	{
-	case 'C': /* RVC */
-	  switch (*++oparg)
-	    {
-	    case 's': /* RS1 x8-x15.  */
-	    case 'w': /* RS1 x8-x15.  */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_gpr_names[EXTRACT_OPERAND (CRS1S, l) + 8]);
-	      break;
-	    case 't': /* RS2 x8-x15.  */
-	    case 'x': /* RS2 x8-x15.  */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_gpr_names[EXTRACT_OPERAND (CRS2S, l) + 8]);
-	      break;
-	    case 'U': /* RS1, constrained to equal RD.  */
-	      print (info->stream, dis_style_register,
-		     "%s", riscv_gpr_names[rd]);
-	      break;
-	    case 'c': /* RS1, constrained to equal sp.  */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_gpr_names[X_SP]);
-	      break;
-	    case 'V': /* RS2 */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_gpr_names[EXTRACT_OPERAND (CRS2, l)]);
-	      break;
-	    case 'o':
-	    case 'j':
-	      if (((l & MASK_C_ADDI) == MATCH_C_ADDI) && rd != 0)
-		maybe_print_address (pd, rd, EXTRACT_CITYPE_IMM (l), 0);
-	      if (info->mach == bfd_mach_riscv64
-		  && ((l & MASK_C_ADDIW) == MATCH_C_ADDIW) && rd != 0)
-		maybe_print_address (pd, rd, EXTRACT_CITYPE_IMM (l), 1);
-	      print (info->stream, dis_style_immediate, "%d",
-		     (int)EXTRACT_CITYPE_IMM (l));
-	      break;
-	    case 'k':
-	      print (info->stream, dis_style_address_offset, "%d",
-		     (int)EXTRACT_CLTYPE_LW_IMM (l));
-	      break;
-	    case 'l':
-	      print (info->stream, dis_style_address_offset, "%d",
-		     (int)EXTRACT_CLTYPE_LD_IMM (l));
-	      break;
-	    case 'm':
-	      print (info->stream, dis_style_address_offset, "%d",
-		     (int)EXTRACT_CITYPE_LWSP_IMM (l));
-	      break;
-	    case 'n':
-	      print (info->stream, dis_style_address_offset, "%d",
-		     (int)EXTRACT_CITYPE_LDSP_IMM (l));
-	      break;
-	    case 'K':
-	      print (info->stream, dis_style_immediate, "%d",
-		     (int)EXTRACT_CIWTYPE_ADDI4SPN_IMM (l));
-	      break;
-	    case 'L':
-	      print (info->stream, dis_style_immediate, "%d",
-		     (int)EXTRACT_CITYPE_ADDI16SP_IMM (l));
-	      break;
-	    case 'M':
-	      print (info->stream, dis_style_address_offset, "%d",
-		     (int)EXTRACT_CSSTYPE_SWSP_IMM (l));
-	      break;
-	    case 'N':
-	      print (info->stream, dis_style_address_offset, "%d",
-		     (int)EXTRACT_CSSTYPE_SDSP_IMM (l));
-	      break;
-	    case 'p':
-	      info->target = EXTRACT_CBTYPE_IMM (l) + pc;
-	      (*info->print_address_func) (info->target, info);
-	      break;
-	    case 'a':
-	      info->target = EXTRACT_CJTYPE_IMM (l) + pc;
-	      (*info->print_address_func) (info->target, info);
-	      break;
-	    case 'u':
-	      print (info->stream, dis_style_immediate, "0x%x",
-		     (int)(EXTRACT_CITYPE_IMM (l) & (RISCV_BIGIMM_REACH-1)));
-	      break;
-	    case '>':
-	      print (info->stream, dis_style_immediate, "0x%x",
-		     (int)EXTRACT_CITYPE_IMM (l) & 0x3f);
-	      break;
-	    case '<':
-	      print (info->stream, dis_style_immediate, "0x%x",
-		     (int)EXTRACT_CITYPE_IMM (l) & 0x1f);
-	      break;
-	    case 'T': /* Floating-point RS2.  */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_fpr_names[EXTRACT_OPERAND (CRS2, l)]);
-	      break;
-	    case 'D': /* Floating-point RS2 x8-x15.  */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_fpr_names[EXTRACT_OPERAND (CRS2S, l) + 8]);
-	      break;
-	    case 'Z': /* ZC 16 bits length instruction fields. */
-	      switch (*++oparg)
+  {
+  case 'C': /* RVC */
+    switch (*++oparg)
+      {
+      case 's': /* RS1 x8-x15.  */
+      case 'w': /* RS1 x8-x15.  */
+        print (info->stream, dis_style_register, "%s",
+         riscv_gpr_names[EXTRACT_OPERAND (CRS1S, l) + 8]);
+        break;
+      case 't': /* RS2 x8-x15.  */
+      case 'x': /* RS2 x8-x15.  */
+        print (info->stream, dis_style_register, "%s",
+         riscv_gpr_names[EXTRACT_OPERAND (CRS2S, l) + 8]);
+        break;
+      case 'U': /* RS1, constrained to equal RD.  */
+        print (info->stream, dis_style_register,
+         "%s", riscv_gpr_names[rd]);
+        break;
+      case 'c': /* RS1, constrained to equal sp.  */
+        print (info->stream, dis_style_register, "%s",
+         riscv_gpr_names[X_SP]);
+        break;
+      case 'V': /* RS2 */
+        print (info->stream, dis_style_register, "%s",
+         riscv_gpr_names[EXTRACT_OPERAND (CRS2, l)]);
+        break;
+      case 'o':
+      case 'j':
+        if (((l & MASK_C_ADDI) == MATCH_C_ADDI) && rd != 0)
+    maybe_print_address (pd, rd, EXTRACT_CITYPE_IMM (l), 0);
+        if (info->mach == bfd_mach_riscv64
+      && ((l & MASK_C_ADDIW) == MATCH_C_ADDIW) && rd != 0)
+    maybe_print_address (pd, rd, EXTRACT_CITYPE_IMM (l), 1);
+        print (info->stream, dis_style_immediate, "%d",
+         (int)EXTRACT_CITYPE_IMM (l));
+        break;
+      case 'k':
+        print (info->stream, dis_style_address_offset, "%d",
+         (int)EXTRACT_CLTYPE_LW_IMM (l));
+        break;
+      case 'l':
+        print (info->stream, dis_style_address_offset, "%d",
+         (int)EXTRACT_CLTYPE_LD_IMM (l));
+        break;
+      case 'm':
+        print (info->stream, dis_style_address_offset, "%d",
+         (int)EXTRACT_CITYPE_LWSP_IMM (l));
+        break;
+      case 'n':
+        print (info->stream, dis_style_address_offset, "%d",
+         (int)EXTRACT_CITYPE_LDSP_IMM (l));
+        break;
+      case 'K':
+        print (info->stream, dis_style_immediate, "%d",
+         (int)EXTRACT_CIWTYPE_ADDI4SPN_IMM (l));
+        break;
+      case 'L':
+        print (info->stream, dis_style_immediate, "%d",
+         (int)EXTRACT_CITYPE_ADDI16SP_IMM (l));
+        break;
+      case 'M':
+        print (info->stream, dis_style_address_offset, "%d",
+         (int)EXTRACT_CSSTYPE_SWSP_IMM (l));
+        break;
+      case 'N':
+        print (info->stream, dis_style_address_offset, "%d",
+         (int)EXTRACT_CSSTYPE_SDSP_IMM (l));
+        break;
+      case 'p':
+        info->target = EXTRACT_CBTYPE_IMM (l) + pc;
+        (*info->print_address_func) (info->target, info);
+        break;
+      case 'a':
+        info->target = EXTRACT_CJTYPE_IMM (l) + pc;
+        (*info->print_address_func) (info->target, info);
+        break;
+      case 'u':
+        print (info->stream, dis_style_immediate, "0x%x",
+         (int)(EXTRACT_CITYPE_IMM (l) & (RISCV_BIGIMM_REACH-1)));
+        break;
+      case '>':
+        print (info->stream, dis_style_immediate, "0x%x",
+         (int)EXTRACT_CITYPE_IMM (l) & 0x3f);
+        break;
+      case '<':
+        print (info->stream, dis_style_immediate, "0x%x",
+         (int)EXTRACT_CITYPE_IMM (l) & 0x1f);
+        break;
+      case 'T': /* Floating-point RS2.  */
+        print (info->stream, dis_style_register, "%s",
+         riscv_fpr_names[EXTRACT_OPERAND (CRS2, l)]);
+        break;
+      case 'D': /* Floating-point RS2 x8-x15.  */
+        print (info->stream, dis_style_register, "%s",
+         riscv_fpr_names[EXTRACT_OPERAND (CRS2S, l) + 8]);
+        break;
+      case 'Z': /* ZC 16 bits length instruction fields. */
+        switch (*++oparg)
           {
           case '1':
             print (info->stream, dis_style_register, "%s",
@@ -459,321 +460,345 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
             break;
           default: break;
           }
-	      break;
-	    }
-	  break;
+        break;
+      }
+    break;
 
-	case 'V': /* RVV */
-	  switch (*++oparg)
-	    {
-	    case 'd':
-	    case 'f':
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_vecr_names_numeric[EXTRACT_OPERAND (VD, l)]);
-	      break;
-	    case 'e':
-	      if (!EXTRACT_OPERAND (VWD, l))
-		print (info->stream, dis_style_register, "%s",
-		       riscv_gpr_names[0]);
-	      else
-		print (info->stream, dis_style_register, "%s",
-		       riscv_vecr_names_numeric[EXTRACT_OPERAND (VD, l)]);
-	      break;
-	    case 's':
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_vecr_names_numeric[EXTRACT_OPERAND (VS1, l)]);
-	      break;
-	    case 't':
-	    case 'u': /* VS1 == VS2 already verified at this point.  */
-	    case 'v': /* VD == VS1 == VS2 already verified at this point.  */
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_vecr_names_numeric[EXTRACT_OPERAND (VS2, l)]);
-	      break;
-	    case '0':
-	      print (info->stream, dis_style_register, "%s",
-		     riscv_vecr_names_numeric[0]);
-	      break;
-	    case 'b':
-	    case 'c':
-	      {
-		int imm = (*oparg == 'b') ? EXTRACT_RVV_VB_IMM (l)
-					  : EXTRACT_RVV_VC_IMM (l);
-		unsigned int imm_vlmul = EXTRACT_OPERAND (VLMUL, imm);
-		unsigned int imm_vsew = EXTRACT_OPERAND (VSEW, imm);
-		unsigned int imm_vta = EXTRACT_OPERAND (VTA, imm);
-		unsigned int imm_vma = EXTRACT_OPERAND (VMA, imm);
-		unsigned int imm_vtype_res = (imm >> 8);
+  case 'V': /* RVV */
+    switch (*++oparg)
+      {
+      case 'd':
+      case 'f':
+        print (info->stream, dis_style_register, "%s",
+         riscv_vecr_names_numeric[EXTRACT_OPERAND (VD, l)]);
+        break;
+      case 'e':
+        if (!EXTRACT_OPERAND (VWD, l))
+    print (info->stream, dis_style_register, "%s",
+           riscv_gpr_names[0]);
+        else
+    print (info->stream, dis_style_register, "%s",
+           riscv_vecr_names_numeric[EXTRACT_OPERAND (VD, l)]);
+        break;
+      case 's':
+        print (info->stream, dis_style_register, "%s",
+         riscv_vecr_names_numeric[EXTRACT_OPERAND (VS1, l)]);
+        break;
+      case 't':
+      case 'u': /* VS1 == VS2 already verified at this point.  */
+      case 'v': /* VD == VS1 == VS2 already verified at this point.  */
+        print (info->stream, dis_style_register, "%s",
+         riscv_vecr_names_numeric[EXTRACT_OPERAND (VS2, l)]);
+        break;
+      case '0':
+        print (info->stream, dis_style_register, "%s",
+         riscv_vecr_names_numeric[0]);
+        break;
+      case 'b':
+      case 'c':
+        {
+    int imm = (*oparg == 'b') ? EXTRACT_RVV_VB_IMM (l)
+            : EXTRACT_RVV_VC_IMM (l);
+    unsigned int imm_vlmul = EXTRACT_OPERAND (VLMUL, imm);
+    unsigned int imm_vsew = EXTRACT_OPERAND (VSEW, imm);
+    unsigned int imm_vta = EXTRACT_OPERAND (VTA, imm);
+    unsigned int imm_vma = EXTRACT_OPERAND (VMA, imm);
+    unsigned int imm_vtype_res = (imm >> 8);
 
-		if (imm_vsew < ARRAY_SIZE (riscv_vsew)
-		    && imm_vlmul < ARRAY_SIZE (riscv_vlmul)
-		    && imm_vta < ARRAY_SIZE (riscv_vta)
-		    && imm_vma < ARRAY_SIZE (riscv_vma)
-		    && !imm_vtype_res
-		    && riscv_vsew[imm_vsew] != NULL
-		    && riscv_vlmul[imm_vlmul] != NULL)
-		  print (info->stream, dis_style_text, "%s,%s,%s,%s",
-			 riscv_vsew[imm_vsew],
-			 riscv_vlmul[imm_vlmul], riscv_vta[imm_vta],
-			 riscv_vma[imm_vma]);
-		else
-		  print (info->stream, dis_style_immediate, "%d", imm);
-	      }
-	      break;
-	    case 'i':
-	      print (info->stream, dis_style_immediate, "%d",
-		     (int)EXTRACT_RVV_VI_IMM (l));
-	      break;
-	    case 'j':
-	      print (info->stream, dis_style_immediate, "%d",
-		     (int)EXTRACT_RVV_VI_UIMM (l));
-	      break;
-	    case 'k':
-	      print (info->stream, dis_style_immediate, "%d",
-		     (int)EXTRACT_RVV_OFFSET (l));
-	      break;
-	    case 'm':
-	      if (! EXTRACT_OPERAND (VMASK, l))
-		print (info->stream, dis_style_register, ",%s",
-		       riscv_vecm_names_numeric[0]);
-	      break;
-	    }
-	  break;
-
-	case ',':
-	case '!':
-	case '(':
-	case ')':
-	case '[':
-	case ']':
-	case '{':
-	case '}':
-	  print (info->stream, dis_style_text, "%c", *oparg);
-	  break;
-
-	case '0':
-	  /* Only print constant 0 if it is the last argument.  */
-	  if (!oparg[1])
-	    print (info->stream, dis_style_immediate, "0");
-	  break;
-
-	/* CORE-V Specific.  */
-	case 'b':
-	  if (oparg[1] == '1')
-	    {
-	      info->target = (EXTRACT_ITYPE_IMM (l)<<1) + pc; ++oparg;
-	      (*info->print_address_func) (info->target, info);
-	      break;
+    if (imm_vsew < ARRAY_SIZE (riscv_vsew)
+        && imm_vlmul < ARRAY_SIZE (riscv_vlmul)
+        && imm_vta < ARRAY_SIZE (riscv_vta)
+        && imm_vma < ARRAY_SIZE (riscv_vma)
+        && !imm_vtype_res
+        && riscv_vsew[imm_vsew] != NULL
+        && riscv_vlmul[imm_vlmul] != NULL)
+      print (info->stream, dis_style_text, "%s,%s,%s,%s",
+       riscv_vsew[imm_vsew],
+       riscv_vlmul[imm_vlmul], riscv_vta[imm_vta],
+       riscv_vma[imm_vma]);
+    else
+      print (info->stream, dis_style_immediate, "%d", imm);
         }
-	  else if (oparg[1] == '2')
-	    {
-	      info->target = (EXTRACT_CV_HWLP_UIMM5 (l)<<1) + pc; ++oparg;
-	      (*info->print_address_func) (info->target, info);
-	      break;
-	    }
-	  else if (oparg[1] == '3')
-	    {
-	      print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_MAC_UIMM5 (l)));
-	      ++oparg;
-	      break;
-	    }
-	  else if (oparg[1] == '4')
-	    {
-	      print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_BI_IMM5 (l)));
-	      ++oparg;
-	      break;
-	    }
-	   else if (oparg[1] == '5')
-	    {
-	      print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_SIMD_IMM6 (l)));
-	      ++oparg;
-	      break;
-	    }
-	  else if (oparg[1] == 'i')
-	    {
-	      print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_ALU_UIMM5 (l)));
-	      ++oparg;
-	      break;
-	    }
-	/* Fall through.  */
-	case 's':
-	  if ((l & MASK_JALR) == MATCH_JALR)
-	    maybe_print_address (pd, rs1, 0, 0);
-	  print (info->stream, dis_style_register, "%s", riscv_gpr_names[rs1]);
-	  break;
+        break;
+      case 'i':
+        print (info->stream, dis_style_immediate, "%d",
+         (int)EXTRACT_RVV_VI_IMM (l));
+        break;
+      case 'j':
+        print (info->stream, dis_style_immediate, "%d",
+         (int)EXTRACT_RVV_VI_UIMM (l));
+        break;
+      case 'k':
+        print (info->stream, dis_style_immediate, "%d",
+         (int)EXTRACT_RVV_OFFSET (l));
+        break;
+      case 'm':
+        if (! EXTRACT_OPERAND (VMASK, l))
+    print (info->stream, dis_style_register, ",%s",
+           riscv_vecm_names_numeric[0]);
+        break;
+      }
+    break;
 
-	case 't':
-	  print (info->stream, dis_style_register, "%s",
-		 riscv_gpr_names[EXTRACT_OPERAND (RS2, l)]);
-	  break;
+  case ',':
+  case '!':
+  case '(':
+  case ')':
+  case '[':
+  case ']':
+  case '{':
+  case '}':
+    print (info->stream, dis_style_text, "%c", *oparg);
+    break;
 
-	case 'u':
-	  print (info->stream, dis_style_immediate, "0x%x",
-		 (unsigned)EXTRACT_UTYPE_IMM (l) >> RISCV_IMM_BITS);
-	  break;
+  case '0':
+    /* Only print constant 0 if it is the last argument.  */
+    if (!oparg[1])
+      print (info->stream, dis_style_immediate, "0");
+    break;
 
-	case 'm':
-	  arg_print (info, EXTRACT_OPERAND (RM, l),
-		     riscv_rm, ARRAY_SIZE (riscv_rm));
-	  break;
+  /* CORE-V Specific.  */
+  case 'b':
+    if (oparg[1] == '1')
+      {
+        info->target = (EXTRACT_ITYPE_IMM (l)<<1) + pc; ++oparg;
+        (*info->print_address_func) (info->target, info);
+        break;
+            }
+    else if (oparg[1] == '2')
+      {
+        info->target = (EXTRACT_CV_HWLP_UIMM5 (l)<<1) + pc; ++oparg;
+        (*info->print_address_func) (info->target, info);
+        break;
+      }
+    else if (oparg[1] == '3')
+      {
+        print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_MAC_UIMM5 (l)));
+        ++oparg;
+        break;
+      }
+    else if (oparg[1] == '4')
+      {
+        print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_BI_IMM5 (l)));
+        ++oparg;
+        break;
+      }
+    else if (oparg[1]=='5') {
+             print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_I5TYPE_UIMM (l))&0x1F); ++oparg;
+          } 
+    else if (oparg[1] == 'i')
+      {
+        print (info->stream, dis_style_immediate, "%d", ((int) EXTRACT_CV_ALU_UIMM5 (l)));
+        ++oparg;
+        break;
+      }
+  /* Fall through.  */
+  case 's':
+    if ((l & MASK_JALR) == MATCH_JALR)
+      maybe_print_address (pd, rs1, 0, 0);
+    print (info->stream, dis_style_register, "%s", riscv_gpr_names[rs1]);
+    break;
 
-	case 'P':
-	  arg_print (info, EXTRACT_OPERAND (PRED, l),
-		     riscv_pred_succ, ARRAY_SIZE (riscv_pred_succ));
-	  break;
+  case 'X':
+    print (info->stream, dis_style_register, "%s", riscv_gpr_names[EXTRACT_OPERAND (PULP_RS3, l)]); break;
 
-	case 'Q':
-	  arg_print (info, EXTRACT_OPERAND (SUCC, l),
-		     riscv_pred_succ, ARRAY_SIZE (riscv_pred_succ));
-	  break;
+  case 't':
+    print (info->stream, dis_style_register, "%s",
+     riscv_gpr_names[EXTRACT_OPERAND (RS2, l)]);
+    break;
 
-	case 'o':
-	  maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 0);
-	  /* Fall through.  */
-	case 'j':
-		/* ji is CORE-V Specific.  */
-	  if (oparg[1] == 'i')
-	    {
-	      ++oparg;
-	      print (info->stream, dis_style_immediate, "%d", (int) EXTRACT_CV_HWLP_UIMM12 (l));
-	      break;
-	    }
-	  if (((l & MASK_ADDI) == MATCH_ADDI && rs1 != 0)
-	      || (l & MASK_JALR) == MATCH_JALR)
-	    maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 0);
-	  if (info->mach == bfd_mach_riscv64
-	      && ((l & MASK_ADDIW) == MATCH_ADDIW) && rs1 != 0)
-	    maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 1);
-	  print (info->stream, dis_style_immediate, "%d",
-		 (int)EXTRACT_ITYPE_IMM (l));
-	  break;
+  case 'u':
+    print (info->stream, dis_style_immediate, "0x%x",
+     (unsigned)EXTRACT_UTYPE_IMM (l) >> RISCV_IMM_BITS);
+    break;
 
-	case 'q':
-	  maybe_print_address (pd, rs1, EXTRACT_STYPE_IMM (l), 0);
-	  print (info->stream, dis_style_address_offset, "%d",
-		 (int)EXTRACT_STYPE_IMM (l));
-	  break;
+  case 'm':
+    arg_print (info, EXTRACT_OPERAND (RM, l),
+         riscv_rm, ARRAY_SIZE (riscv_rm));
+    break;
 
-	case 'f':
-	  print (info->stream, dis_style_address_offset, "%d",
-		 (int)EXTRACT_STYPE_IMM (l));
-	  break;
+  case 'l':
+    print (info->stream, dis_style_immediate, "%d", (int)EXTRACT_ITYPE_IMM6L (l));
+    break;
 
-	case 'a':
-	  info->target = EXTRACT_JTYPE_IMM (l) + pc;
-	  (*info->print_address_func) (info->target, info);
-	  break;
+  case 'P':
+    arg_print (info, EXTRACT_OPERAND (PRED, l),
+         riscv_pred_succ, ARRAY_SIZE (riscv_pred_succ));
+    break;
 
-	case 'p':
-	  info->target = EXTRACT_BTYPE_IMM (l) + pc;
-	  (*info->print_address_func) (info->target, info);
-	  break;
+  case 'Q':
+    arg_print (info, EXTRACT_OPERAND (SUCC, l),
+         riscv_pred_succ, ARRAY_SIZE (riscv_pred_succ));
+    break;
 
-	case 'd':
-	  if ((l & MASK_AUIPC) == MATCH_AUIPC)
-	    pd->hi_addr[rd] = pc + EXTRACT_UTYPE_IMM (l);
-	  else if ((l & MASK_LUI) == MATCH_LUI)
-	    pd->hi_addr[rd] = EXTRACT_UTYPE_IMM (l);
-	  else if ((l & MASK_C_LUI) == MATCH_C_LUI)
-	    pd->hi_addr[rd] = EXTRACT_CITYPE_LUI_IMM (l);
-	  if (oparg[1] == 'i')
-	    {
-	      ++oparg;
-	      print (info->stream, dis_style_immediate, "%d", (int) rd);
-	    }
-	  else
-	    print (info->stream, dis_style_register, "%s", riscv_gpr_names[rd]);
-	  break;
+  case 'n':
+  switch(*++oparg)
+  {
+    case 'd':
+      print (info->stream, dis_style_register, "%s", riscv_gpr_names[rd]); break;
+    case 's':
+      print (info->stream, dis_style_register, "%s", riscv_gpr_names[rs1]); break;
+    case 't':
+      print (info->stream, dis_style_register, "%s", riscv_gpr_names[rs2]); break;
+    case '3':
+      print (info->stream, dis_style_register, "%d", (int)EXTRACT_PTYPE_IMM3U (l)); break;
+    case '4':
+      print (info->stream, dis_style_register, "%d", (int)EXTRACT_PTYPE_IMM4U (l)); break;
+    case '5':
+      print (info->stream, dis_style_register, "%d", (int)EXTRACT_PTYPE_IMM5U (l)); break;
+    case '6':
+      print (info->stream, dis_style_register, "%d", (int)EXTRACT_PTYPE_IMM6U (l)); break;
+    break;
+  }
 
-	case 'y':
-	  print (info->stream, dis_style_text, "0x%x",
-		 (int)EXTRACT_OPERAND (BS, l));
-	  break;
+  case 'o':
+    maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 0);
+    /* Fall through.  */
+  case 'j':
+    /* ji is CORE-V Specific.  */
+    if (oparg[1] == 'i')
+      {
+        ++oparg;
+        print (info->stream, dis_style_immediate, "%d", (int) EXTRACT_CV_HWLP_UIMM12 (l));
+        break;
+      }
+    if (((l & MASK_ADDI) == MATCH_ADDI && rs1 != 0)
+        || (l & MASK_JALR) == MATCH_JALR)
+      maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 0);
+    if (info->mach == bfd_mach_riscv64
+        && ((l & MASK_ADDIW) == MATCH_ADDIW) && rs1 != 0)
+      maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 1);
+    print (info->stream, dis_style_immediate, "%d",
+     (int)EXTRACT_ITYPE_IMM (l));
+    break;
 
-	case 'z':
-	  print (info->stream, dis_style_register, "%s", riscv_gpr_names[0]);
-	  break;
+  case 'q':
+    maybe_print_address (pd, rs1, EXTRACT_STYPE_IMM (l), 0);
+    print (info->stream, dis_style_address_offset, "%d",
+     (int)EXTRACT_STYPE_IMM (l));
+    break;
 
-	case '>':
-	  print (info->stream, dis_style_immediate, "0x%x",
-		 (int)EXTRACT_OPERAND (SHAMT, l));
-	  break;
+  case 'f':
+    print (info->stream, dis_style_address_offset, "%d",
+     (int)EXTRACT_STYPE_IMM (l));
+    break;
 
-	case '<':
-	  print (info->stream, dis_style_immediate, "0x%x",
-		 (int)EXTRACT_OPERAND (SHAMTW, l));
-	  break;
+  case 'a':
+    info->target = EXTRACT_JTYPE_IMM (l) + pc;
+    (*info->print_address_func) (info->target, info);
+    break;
 
-	case 'S':
-	case 'U':
-	  print (info->stream, dis_style_register, "%s", riscv_fpr_names[rs1]);
-	  break;
+  case 'p':
+    info->target = EXTRACT_BTYPE_IMM (l) + pc;
+    (*info->print_address_func) (info->target, info);
+    break;
 
-	case 'T':
-	  print (info->stream, dis_style_register, "%s",
-		 riscv_fpr_names[EXTRACT_OPERAND (RS2, l)]);
-	  break;
+  case 'd':
+    if ((l & MASK_AUIPC) == MATCH_AUIPC)
+      pd->hi_addr[rd] = pc + EXTRACT_UTYPE_IMM (l);
+    else if ((l & MASK_LUI) == MATCH_LUI)
+      pd->hi_addr[rd] = EXTRACT_UTYPE_IMM (l);
+    else if ((l & MASK_C_LUI) == MATCH_C_LUI)
+      pd->hi_addr[rd] = EXTRACT_CITYPE_LUI_IMM (l);
+    if (oparg[1] == 'i')
+      {
+        ++oparg;
+        print (info->stream, dis_style_immediate, "%d", (int) rd);
+      }
+    else
+      print (info->stream, dis_style_register, "%s", riscv_gpr_names[rd]);
+    break;
 
-	case 'D':
-	  print (info->stream, dis_style_register, "%s", riscv_fpr_names[rd]);
-	  break;
+  case 'y':
+    print (info->stream, dis_style_text, "0x%x",
+     (int)EXTRACT_OPERAND (BS, l));
+    break;
 
-	case 'R':
-	  print (info->stream, dis_style_register, "%s",
-		 riscv_fpr_names[EXTRACT_OPERAND (RS3, l)]);
-	  break;
+  case 'z':
+    print (info->stream, dis_style_register, "%s", riscv_gpr_names[0]);
+    break;
 
-	case 'E':
-	  {
-	    static const char *riscv_csr_hash[4096]; /* Total 2^12 CSRs.  */
-	    static bool init_csr = false;
-	    unsigned int csr = EXTRACT_OPERAND (CSR, l);
+  case '>':
+    print (info->stream, dis_style_immediate, "0x%x",
+     (int)EXTRACT_OPERAND (SHAMT, l));
+    break;
 
-	    if (!init_csr)
-	      {
-		unsigned int i;
-		for (i = 0; i < 4096; i++)
-		  riscv_csr_hash[i] = NULL;
+  case '<':
+    print (info->stream, dis_style_immediate, "0x%x",
+     (int)EXTRACT_OPERAND (SHAMTW, l));
+    break;
 
-		/* Set to the newest privileged version.  */
-		if (default_priv_spec == PRIV_SPEC_CLASS_NONE)
-		  default_priv_spec = PRIV_SPEC_CLASS_DRAFT - 1;
+  case 'S':
+  case 'U':
+    print (info->stream, dis_style_register, "%s", riscv_fpr_names[rs1]);
+    break;
 
-#define DECLARE_CSR(name, num, class, define_version, abort_version)	\
-		if (riscv_csr_hash[num] == NULL 			\
-		    && ((define_version == PRIV_SPEC_CLASS_NONE 	\
-			 && abort_version == PRIV_SPEC_CLASS_NONE)	\
-			|| (default_priv_spec >= define_version 	\
-			    && default_priv_spec < abort_version)))	\
-		  riscv_csr_hash[num] = #name;
+  case 'T':
+    print (info->stream, dis_style_register, "%s",
+     riscv_fpr_names[EXTRACT_OPERAND (RS2, l)]);
+    break;
+
+  case 'D':
+    print (info->stream, dis_style_register, "%s", riscv_fpr_names[rd]);
+    break;
+
+  case 'R':
+    print (info->stream, dis_style_register, "%s",
+     riscv_fpr_names[EXTRACT_OPERAND (RS3, l)]);
+    break;
+
+  case 'E':
+    {
+      static const char *riscv_csr_hash[4096]; /* Total 2^12 CSRs.  */
+      static bool init_csr = false;
+      unsigned int csr = EXTRACT_OPERAND (CSR, l);
+
+      if (!init_csr)
+        {
+    unsigned int i;
+    for (i = 0; i < 4096; i++)
+      riscv_csr_hash[i] = NULL;
+
+    /* Set to the newest privileged version.  */
+    if (default_priv_spec == PRIV_SPEC_CLASS_NONE)
+      default_priv_spec = PRIV_SPEC_CLASS_DRAFT - 1;
+
+#define DECLARE_CSR(name, num, class, define_version, abort_version)  \
+    if (riscv_csr_hash[num] == NULL       \
+        && ((define_version == PRIV_SPEC_CLASS_NONE   \
+       && abort_version == PRIV_SPEC_CLASS_NONE)  \
+      || (default_priv_spec >= define_version   \
+          && default_priv_spec < abort_version))) \
+      riscv_csr_hash[num] = #name;
 #define DECLARE_CSR_ALIAS(name, num, class, define_version, abort_version) \
-		DECLARE_CSR (name, num, class, define_version, abort_version)
+    DECLARE_CSR (name, num, class, define_version, abort_version)
 #include "opcode/riscv-opc.h"
 #undef DECLARE_CSR
-	      }
+        }
 
-	    if (riscv_csr_hash[csr] != NULL)
-	      print (info->stream, dis_style_text, "%s", riscv_csr_hash[csr]);
-	    else
-	      print (info->stream, dis_style_text, "0x%x", csr);
-	    break;
-	  }
+      if (riscv_csr_hash[csr] != NULL)
+        print (info->stream, dis_style_text, "%s", riscv_csr_hash[csr]);
+      else
+        print (info->stream, dis_style_text, "0x%x", csr);
+      break;
+    }
 
-	case 'Y':
-	  print (info->stream, dis_style_text, "0x%x",
-		 (int) EXTRACT_OPERAND (RNUM, l));
-	  break;
+  case 'Y':
+    print (info->stream, dis_style_text, "0x%x",
+     (int) EXTRACT_OPERAND (RNUM, l));
+    break;
 
-	case 'Z':
-	  print (info->stream, dis_style_text, "%d", rs1);
-	  break;
+  case 'Z':
+    print (info->stream, dis_style_text, "%d", rs1);
+    break;
 
-	default:
-	  /* xgettext:c-format */
-	  print (info->stream, dis_style_text,
-		 _("# internal error, undefined modifier (%c)"),
-		 *opargStart);
-	  return;
-	}
+  default:
+    /* xgettext:c-format */
+    print (info->stream, dis_style_text,
+     _("# internal error, undefined modifier (%c)"),
+     *opargStart);
+    return;
+  }
     }
 }
 
@@ -797,8 +822,8 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
   if (! init)
     {
       for (op = riscv_opcodes; op->name; op++)
-	if (!riscv_hash[OP_HASH_IDX (op->match)])
-	  riscv_hash[OP_HASH_IDX (op->match)] = op;
+  if (!riscv_hash[OP_HASH_IDX (op->match)])
+    riscv_hash[OP_HASH_IDX (op->match)] = op;
 
       init = 1;
     }
@@ -815,29 +840,29 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
       pd->jvt_end = -1;
 
       for (i = 0; i < (int)ARRAY_SIZE (pd->hi_addr); i++)
-	pd->hi_addr[i] = -1;
+  pd->hi_addr[i] = -1;
 
       for (i = 0; i < info->symtab_size; i++)
         {
-	  if (strcmp (bfd_asymbol_name (info->symtab[i]), RISCV_GP_SYMBOL) == 0)
-	    pd->gp = bfd_asymbol_value (info->symtab[i]);
-	  /* Read the address of table jump entries.  */
-	  else if (strcmp (bfd_asymbol_name (info->symtab[i]),
-				  RISCV_TABLE_JUMP_BASE_SYMBOL) == 0)
-	    pd->jvt_base = bfd_asymbol_value (info->symtab[i]);
-	}
+    if (strcmp (bfd_asymbol_name (info->symtab[i]), RISCV_GP_SYMBOL) == 0)
+      pd->gp = bfd_asymbol_value (info->symtab[i]);
+    /* Read the address of table jump entries.  */
+    else if (strcmp (bfd_asymbol_name (info->symtab[i]),
+          RISCV_TABLE_JUMP_BASE_SYMBOL) == 0)
+      pd->jvt_base = bfd_asymbol_value (info->symtab[i]);
+  }
 
       /* Calculate the closest symbol from jvt base to determine the size of table jump
           entry section.  */
       if (pd->jvt_base != 0)
-	{
-	  for (i = 0; i < info->symtab_size; i++)
-	    {
-	      sym_val = bfd_asymbol_value (info->symtab[i]);
-	      if (sym_val > pd->jvt_base && sym_val < pd->jvt_end)
-	        pd->jvt_end = sym_val;
-	    }
-	}
+  {
+    for (i = 0; i < info->symtab_size; i++)
+      {
+        sym_val = bfd_asymbol_value (info->symtab[i]);
+        if (sym_val > pd->jvt_base && sym_val < pd->jvt_end)
+          pd->jvt_end = sym_val;
+      }
+  }
     }
   else
     pd = info->private_data;
@@ -863,93 +888,93 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
     {
       /* If XLEN is not known, get its value from the ELF class.  */
       if (info->mach == bfd_mach_riscv64)
-	xlen = 64;
+  xlen = 64;
       else if (info->mach == bfd_mach_riscv32)
-	xlen = 32;
+  xlen = 32;
       else if (info->section != NULL)
-	{
-	  Elf_Internal_Ehdr *ehdr = elf_elfheader (info->section->owner);
-	  xlen = ehdr->e_ident[EI_CLASS] == ELFCLASS64 ? 64 : 32;
-	}
+  {
+    Elf_Internal_Ehdr *ehdr = elf_elfheader (info->section->owner);
+    xlen = ehdr->e_ident[EI_CLASS] == ELFCLASS64 ? 64 : 32;
+  }
 
       if (pd->jvt_base
-	  && (pd->jvt_end > pd->jvt_base + 255 * (xlen / 8)))
+    && (pd->jvt_end > pd->jvt_base + 255 * (xlen / 8)))
         pd->jvt_end = pd->jvt_base + 255 * (xlen / 8);
 
       /* Dump jump table entries.  */
       if (riscv_subset_supports (&riscv_rps_dis, "zcmt")
-	  && pd->jvt_base != 0
-	  && pd->jvt_base != (bfd_vma)-1
-	  && memaddr >= pd->jvt_base
-	  && memaddr < pd->jvt_end
-	  && print_jvt_entry_value (info, memaddr))
-	{
-	  info->bytes_per_chunk = xlen / 8;
-	  return xlen / 8;
-	}
+    && pd->jvt_base != 0
+    && pd->jvt_base != (bfd_vma)-1
+    && memaddr >= pd->jvt_base
+    && memaddr < pd->jvt_end
+    && print_jvt_entry_value (info, memaddr))
+  {
+    info->bytes_per_chunk = xlen / 8;
+    return xlen / 8;
+  }
 
       /* If arch has ZFINX flags, use gpr for disassemble.  */
       if(riscv_subset_supports (&riscv_rps_dis, "zfinx"))
-	riscv_fpr_names = riscv_gpr_names_abi;
+  riscv_fpr_names = riscv_gpr_names_abi;
 
       for (; op->name; op++)
-	{
-	  /* Does the opcode match?  */
-	  if (! (op->match_func) (op, word))
-	    continue;
-	  /* Is this a pseudo-instruction and may we print it as such?  */
-	  if (no_aliases && (op->pinfo & INSN_ALIAS))
-	    continue;
-	  /* Is this instruction restricted to a certain value of XLEN?  */
-	  if ((op->xlen_requirement != 0) && (op->xlen_requirement != xlen))
-	    continue;
+  {
+    /* Does the opcode match?  */
+    if (! (op->match_func) (op, word))
+      continue;
+    /* Is this a pseudo-instruction and may we print it as such?  */
+    if (no_aliases && (op->pinfo & INSN_ALIAS))
+      continue;
+    /* Is this instruction restricted to a certain value of XLEN?  */
+    if ((op->xlen_requirement != 0) && (op->xlen_requirement != xlen))
+      continue;
 
-	  if (!riscv_multi_subset_supports (&riscv_rps_dis, op->insn_class))
-	    continue;
+    if (!riscv_multi_subset_supports (&riscv_rps_dis, op->insn_class))
+      continue;
 
-	  /* It's a match.  */
-	  (*info->fprintf_styled_func) (info->stream, dis_style_mnemonic,
-					"%s", op->name);
-	  print_insn_args (op->args, word, memaddr, info);
+    /* It's a match.  */
+    (*info->fprintf_styled_func) (info->stream, dis_style_mnemonic,
+          "%s", op->name);
+    print_insn_args (op->args, word, memaddr, info);
 
-	  /* Try to disassemble multi-instruction addressing sequences.  */
-	  if (pd->print_addr != (bfd_vma)-1)
-	    {
-	      info->target = pd->print_addr;
-	      (*info->fprintf_styled_func)
-		(info->stream, dis_style_comment_start, " # ");
-	      (*info->print_address_func) (info->target, info);
-	      pd->print_addr = -1;
-	    }
+    /* Try to disassemble multi-instruction addressing sequences.  */
+    if (pd->print_addr != (bfd_vma)-1)
+      {
+        info->target = pd->print_addr;
+        (*info->fprintf_styled_func)
+    (info->stream, dis_style_comment_start, " # ");
+        (*info->print_address_func) (info->target, info);
+        pd->print_addr = -1;
+      }
 
-	  /* Finish filling out insn_info fields.  */
-	  switch (op->pinfo & INSN_TYPE)
-	    {
-	    case INSN_BRANCH:
-	      info->insn_type = dis_branch;
-	      break;
-	    case INSN_CONDBRANCH:
-	      info->insn_type = dis_condbranch;
-	      break;
-	    case INSN_JSR:
-	      info->insn_type = dis_jsr;
-	      break;
-	    case INSN_DREF:
-	      info->insn_type = dis_dref;
-	      break;
-	    default:
-	      break;
-	    }
+    /* Finish filling out insn_info fields.  */
+    switch (op->pinfo & INSN_TYPE)
+      {
+      case INSN_BRANCH:
+        info->insn_type = dis_branch;
+        break;
+      case INSN_CONDBRANCH:
+        info->insn_type = dis_condbranch;
+        break;
+      case INSN_JSR:
+        info->insn_type = dis_jsr;
+        break;
+      case INSN_DREF:
+        info->insn_type = dis_dref;
+        break;
+      default:
+        break;
+      }
 
-	  if (op->pinfo & INSN_DATA_SIZE)
-	    {
-	      int size = ((op->pinfo & INSN_DATA_SIZE)
-			  >> INSN_DATA_SIZE_SHIFT);
-	      info->data_size = 1 << (size - 1);
-	    }
+    if (op->pinfo & INSN_DATA_SIZE)
+      {
+        int size = ((op->pinfo & INSN_DATA_SIZE)
+        >> INSN_DATA_SIZE_SHIFT);
+        info->data_size = 1 << (size - 1);
+      }
 
-	  return insnlen;
-	}
+    return insnlen;
+  }
     }
 
   /* We did not find a match, so just print the instruction bits.  */
@@ -960,23 +985,23 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
     case 4:
     case 8:
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_assembler_directive, ".%dbyte\t", insnlen);
+  (info->stream, dis_style_assembler_directive, ".%dbyte\t", insnlen);
       (*info->fprintf_styled_func) (info->stream, dis_style_immediate,
-				    "0x%llx", (unsigned long long) word);
+            "0x%llx", (unsigned long long) word);
       break;
     default:
       {
         int i;
-	(*info->fprintf_styled_func)
-	  (info->stream, dis_style_assembler_directive, ".byte\t");
+  (*info->fprintf_styled_func)
+    (info->stream, dis_style_assembler_directive, ".byte\t");
         for (i = 0; i < insnlen; ++i)
           {
             if (i > 0)
-	      (*info->fprintf_styled_func) (info->stream, dis_style_text,
-					    ", ");
-	    (*info->fprintf_styled_func) (info->stream, dis_style_immediate,
-					  "0x%02x",
-					  (unsigned int) (word & 0xff));
+        (*info->fprintf_styled_func) (info->stream, dis_style_text,
+              ", ");
+      (*info->fprintf_styled_func) (info->stream, dis_style_immediate,
+            "0x%02x",
+            (unsigned int) (word & 0xff));
             word >>= 8;
           }
       }
@@ -990,8 +1015,8 @@ riscv_disassemble_insn (bfd_vma memaddr, insn_t word, disassemble_info *info)
 
 static bool
 riscv_get_map_state (int n,
-		     enum riscv_seg_mstate *state,
-		     struct disassemble_info *info)
+         enum riscv_seg_mstate *state,
+         struct disassemble_info *info)
 {
   const char *name;
 
@@ -1016,7 +1041,7 @@ riscv_get_map_state (int n,
 
 static enum riscv_seg_mstate
 riscv_search_mapping_symbol (bfd_vma memaddr,
-			     struct disassemble_info *info)
+           struct disassemble_info *info)
 {
   enum riscv_seg_mstate mstate;
   bool from_last_map_symbol;
@@ -1044,7 +1069,7 @@ riscv_search_mapping_symbol (bfd_vma memaddr,
      don't use the last_map_symbol to search.  We usually reset the
      info->stop_offset when handling a new section.  */
   from_last_map_symbol = (last_map_symbol >= 0
-			  && info->stop_offset == last_stop_offset);
+        && info->stop_offset == last_stop_offset);
 
   /* Start scanning at the start of the function, or wherever
      we finished last time.  */
@@ -1058,15 +1083,15 @@ riscv_search_mapping_symbol (bfd_vma memaddr,
       bfd_vma addr = bfd_asymbol_value (info->symtab[n]);
       /* We have searched all possible symbols in the range.  */
       if (addr > memaddr)
-	break;
+  break;
       if (riscv_get_map_state (n, &mstate, info))
-	{
-	  symbol = n;
-	  found = true;
-	  /* Do not stop searching, in case there are some mapping
-	     symbols have the same value, but have different names.
-	     Use the last one.  */
-	}
+  {
+    symbol = n;
+    found = true;
+    /* Do not stop searching, in case there are some mapping
+       symbols have the same value, but have different names.
+       Use the last one.  */
+  }
     }
 
   /* We can not find the suitable mapping symbol above.  Therefore, we
@@ -1077,22 +1102,22 @@ riscv_search_mapping_symbol (bfd_vma memaddr,
     {
       n = info->symtab_pos;
       if (from_last_map_symbol && n >= last_map_symbol)
-	n = last_map_symbol;
+  n = last_map_symbol;
 
       for (; n >= 0; n--)
-	{
-	  bfd_vma addr = bfd_asymbol_value (info->symtab[n]);
-	  /* We have searched all possible symbols in the range.  */
-	  if (addr < (info->section ? info->section->vma : 0))
-	    break;
-	  /* Stop searching once we find the closed mapping symbol.  */
-	  if (riscv_get_map_state (n, &mstate, info))
-	    {
-	      symbol = n;
-	      found = true;
-	      break;
-	    }
-	}
+  {
+    bfd_vma addr = bfd_asymbol_value (info->symtab[n]);
+    /* We have searched all possible symbols in the range.  */
+    if (addr < (info->section ? info->section->vma : 0))
+      break;
+    /* Stop searching once we find the closed mapping symbol.  */
+    if (riscv_get_map_state (n, &mstate, info))
+      {
+        symbol = n;
+        found = true;
+        break;
+      }
+  }
     }
 
   /* Save the information for next use.  */
@@ -1106,7 +1131,7 @@ riscv_search_mapping_symbol (bfd_vma memaddr,
 
 static bfd_vma
 riscv_data_length (bfd_vma memaddr,
-		   disassemble_info *info)
+       disassemble_info *info)
 {
   bfd_vma length;
   bool found = false;
@@ -1119,17 +1144,17 @@ riscv_data_length (bfd_vma memaddr,
       int n;
       enum riscv_seg_mstate m = MAP_NONE;
       for (n = last_map_symbol + 1; n < info->symtab_size; n++)
-	{
-	  bfd_vma addr = bfd_asymbol_value (info->symtab[n]);
-	  if (addr > memaddr
-	      && riscv_get_map_state (n, &m, info))
-	    {
-	      if (addr - memaddr < length)
-		length = addr - memaddr;
-	      found = true;
-	      break;
-	    }
-	}
+  {
+    bfd_vma addr = bfd_asymbol_value (info->symtab[n]);
+    if (addr > memaddr
+        && riscv_get_map_state (n, &m, info))
+      {
+        if (addr - memaddr < length)
+    length = addr - memaddr;
+        found = true;
+        break;
+      }
+  }
     }
   if (!found)
     {
@@ -1146,8 +1171,8 @@ riscv_data_length (bfd_vma memaddr,
 
 static int
 riscv_disassemble_data (bfd_vma memaddr ATTRIBUTE_UNUSED,
-			insn_t data,
-			disassemble_info *info)
+      insn_t data,
+      disassemble_info *info)
 {
   info->display_endian = info->endian;
 
@@ -1156,34 +1181,34 @@ riscv_disassemble_data (bfd_vma memaddr ATTRIBUTE_UNUSED,
     case 1:
       info->bytes_per_line = 6;
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_assembler_directive, ".byte\t");
+  (info->stream, dis_style_assembler_directive, ".byte\t");
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_assembler_directive, "0x%02llx",
-	 (unsigned long long) data);
+  (info->stream, dis_style_assembler_directive, "0x%02llx",
+   (unsigned long long) data);
       break;
     case 2:
       info->bytes_per_line = 8;
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_assembler_directive, ".short\t");
+  (info->stream, dis_style_assembler_directive, ".short\t");
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_immediate, "0x%04llx",
-	 (unsigned long long) data);
+  (info->stream, dis_style_immediate, "0x%04llx",
+   (unsigned long long) data);
       break;
     case 4:
       info->bytes_per_line = 8;
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_assembler_directive, ".word\t");
+  (info->stream, dis_style_assembler_directive, ".word\t");
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_immediate, "0x%08llx",
-	 (unsigned long long) data);
+  (info->stream, dis_style_immediate, "0x%08llx",
+   (unsigned long long) data);
       break;
     case 8:
       info->bytes_per_line = 8;
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_assembler_directive, ".dword\t");
+  (info->stream, dis_style_assembler_directive, ".dword\t");
       (*info->fprintf_styled_func)
-	(info->stream, dis_style_immediate, "0x%016llx",
-	 (unsigned long long) data);
+  (info->stream, dis_style_immediate, "0x%016llx",
+   (unsigned long long) data);
       break;
     default:
       abort ();
@@ -1227,10 +1252,10 @@ print_insn_riscv (bfd_vma memaddr, struct disassemble_info *info)
       /* Get the first 2-bytes to check the lenghth of instruction.  */
       status = (*info->read_memory_func) (memaddr, packet, 2, info);
       if (status != 0)
-	{
-	  (*info->memory_error_func) (status, memaddr, info);
-	  return status;
-	}
+  {
+    (*info->memory_error_func) (status, memaddr, info);
+    return status;
+  }
       insn = (insn_t) bfd_getl16 (packet);
       dump_size = riscv_insn_length (insn);
       riscv_disassembler = riscv_disassemble_insn;
@@ -1257,21 +1282,21 @@ riscv_get_disassembler (bfd *abfd)
     {
       const struct elf_backend_data *ebd = get_elf_backend_data (abfd);
       if (ebd)
-	{
-	  const char *sec_name = ebd->obj_attrs_section;
-	  if (bfd_get_section_by_name (abfd, sec_name) != NULL)
-	    {
-	      obj_attribute *attr = elf_known_obj_attributes_proc (abfd);
-	      unsigned int Tag_a = Tag_RISCV_priv_spec;
-	      unsigned int Tag_b = Tag_RISCV_priv_spec_minor;
-	      unsigned int Tag_c = Tag_RISCV_priv_spec_revision;
-	      riscv_get_priv_spec_class_from_numbers (attr[Tag_a].i,
-						      attr[Tag_b].i,
-						      attr[Tag_c].i,
-						      &default_priv_spec);
-	      default_arch = attr[Tag_RISCV_arch].s;
-	    }
-	}
+  {
+    const char *sec_name = ebd->obj_attrs_section;
+    if (bfd_get_section_by_name (abfd, sec_name) != NULL)
+      {
+        obj_attribute *attr = elf_known_obj_attributes_proc (abfd);
+        unsigned int Tag_a = Tag_RISCV_priv_spec;
+        unsigned int Tag_b = Tag_RISCV_priv_spec_minor;
+        unsigned int Tag_c = Tag_RISCV_priv_spec_revision;
+        riscv_get_priv_spec_class_from_numbers (attr[Tag_a].i,
+                  attr[Tag_b].i,
+                  attr[Tag_c].i,
+                  &default_priv_spec);
+        default_arch = attr[Tag_RISCV_arch].s;
+      }
+  }
     }
 
   riscv_release_subset_list (&riscv_subsets);
@@ -1294,7 +1319,7 @@ riscv_symbol_is_valid (asymbol * sym,
   name = bfd_asymbol_name (sym);
 
   return (strcmp (name, RISCV_FAKE_LABEL_NAME) != 0
-	  && !riscv_elf_is_mapping_symbols (name));
+    && !riscv_elf_is_mapping_symbols (name));
 }
 
 
@@ -1353,7 +1378,7 @@ disassembler_options_riscv (void)
       args[RISCV_OPTION_ARG_PRIV_SPEC].values
         = XNEWVEC (const char *, priv_spec_count + 1);
       for (i = 0; i < priv_spec_count; i++)
-	args[RISCV_OPTION_ARG_PRIV_SPEC].values[i]
+  args[RISCV_OPTION_ARG_PRIV_SPEC].values[i]
           = riscv_priv_specs[i].name;
       /* The array we return must be NULL terminated.  */
       args[RISCV_OPTION_ARG_PRIV_SPEC].values[i] = NULL;
@@ -1370,14 +1395,14 @@ disassembler_options_riscv (void)
       opts->description = XNEWVEC (const char *, num_options + 1);
       opts->arg = XNEWVEC (const disasm_option_arg_t *, num_options + 1);
       for (i = 0; i < num_options; i++)
-	{
-	  opts->name[i] = riscv_options[i].name;
-	  opts->description[i] = _(riscv_options[i].description);
-	  if (riscv_options[i].arg != RISCV_OPTION_ARG_NONE)
-	    opts->arg[i] = &args[riscv_options[i].arg];
-	  else
-	    opts->arg[i] = NULL;
-	}
+  {
+    opts->name[i] = riscv_options[i].name;
+    opts->description[i] = _(riscv_options[i].description);
+    if (riscv_options[i].arg != RISCV_OPTION_ARG_NONE)
+      opts->arg[i] = &args[riscv_options[i].arg];
+    else
+      opts->arg[i] = NULL;
+  }
       /* The array we return must be NULL terminated.  */
       opts->name[i] = NULL;
       opts->description[i] = NULL;
@@ -1412,25 +1437,25 @@ with the -M switch (multiple options should be separated by commas):\n"));
       size_t len = strlen (opts->name[i]);
 
       if (opts->arg[i] != NULL)
-	len += strlen (opts->arg[i]->name);
+  len += strlen (opts->arg[i]->name);
       if (max_len < len)
-	max_len = len;
+  max_len = len;
     }
 
   for (i = 0, max_len++; opts->name[i] != NULL; i++)
     {
       fprintf (stream, "  %s", opts->name[i]);
       if (opts->arg[i] != NULL)
-	fprintf (stream, "%s", opts->arg[i]->name);
+  fprintf (stream, "%s", opts->arg[i]->name);
       if (opts->description[i] != NULL)
-	{
-	  size_t len = strlen (opts->name[i]);
+  {
+    size_t len = strlen (opts->name[i]);
 
-	  if (opts->arg != NULL && opts->arg[i] != NULL)
-	    len += strlen (opts->arg[i]->name);
-	  fprintf (stream, "%*c %s", (int) (max_len - len), ' ',
+    if (opts->arg != NULL && opts->arg[i] != NULL)
+      len += strlen (opts->arg[i]->name);
+    fprintf (stream, "%*c %s", (int) (max_len - len), ' ',
                    opts->description[i]);
-	}
+  }
       fprintf (stream, "\n");
     }
 
@@ -1438,9 +1463,9 @@ with the -M switch (multiple options should be separated by commas):\n"));
     {
       fprintf (stream, _("\n\
   For the options above, the following values are supported for \"%s\":\n   "),
-	       args[i].name);
+         args[i].name);
       for (j = 0; args[i].values[j] != NULL; j++)
-	fprintf (stream, " %s", args[i].values[j]);
+  fprintf (stream, " %s", args[i].values[j]);
       fprintf (stream, _("\n"));
     }
 
